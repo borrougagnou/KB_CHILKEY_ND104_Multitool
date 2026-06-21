@@ -1,0 +1,64 @@
+name: Makefile Cross-Platform Test
+
+on:
+  push:
+  pull_request:
+
+env:
+  PROGRAM: myHIDprogram-MAKE
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build-and-run:
+    runs-on: ${{ matrix.os }}
+
+
+    # https://github.com/actions/runner-images
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14, windows-2022]
+
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Install deps
+    - name: Install MSYS2 (Windows)
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        install: make gcc
+
+    - name: Install libusb (Linux)
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y libusb-1.0-0-dev
+
+    # Build
+    - name: Build (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: make && mv myHIDprogram ${{ env.PROGRAM }}
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: make && mv myHIDprogram.exe ${{ env.PROGRAM }}.exe
+
+    # Execute (|| true to prevent the program fail if no HID device is connected)
+    - name: Run executable (Linux/MacOS)
+      if: runner.os != 'Windows'
+      run: ./${{ env.PROGRAM }} || true
+
+    - name: Run executable (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: ./${{ env.PROGRAM }}.exe || true
+
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.PROGRAM }}-${{ runner.os }}
+        path: |
+          build/${{ env.PROGRAM }}*
+          ${{ env.PROGRAM }}*
