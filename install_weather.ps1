@@ -82,8 +82,8 @@ function Show-ScriptHelp {
     Write-Host "  powershell.exe -ExecutionPolicy Bypass -File .\install.ps1 -TargetUser MyAccount -LocalAppData 'C:\Users\Me\AppData\Local'"
     Write-Host ""
     Write-Host "Optional parameters:"
-    Write-Host "  -TargetLocalAppData \"C:\\...\""
-    Write-Host "  -TargetUser \"DOMAIN\\User\""
+    Write-Host "  -TargetLocalAppData C:\..."
+    Write-Host "  -TargetUser DOMAIN\User"
     Write-Host ""
     Write-Host "This script will:"
     Write-Host "- download the latest .exe release"
@@ -135,7 +135,7 @@ function Download-ProgramFromRepoUrl {
     )
 
     # Little trick on my own to use TLS 1.2 in case the user uses old Windows,
-    # but very old systems may still fail depending on .NET and system updates.
+    # unfortunately old systems may still fail depending on .NET and system updates.
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     } catch {
@@ -253,7 +253,7 @@ function Ask-LocationConfiguration {
             return $config
         }
 
-        Write-Host "Please choose 1, 2, or press Enter."
+        Write-Host "Please choose 1, 2 ? (default: 1)"
     }
 }
 
@@ -433,16 +433,25 @@ function Main {
     Write-Host "Target user: $TargetUser"
     Write-Host "Target LocalAppData: $localAppData"
 
-    Write-Host         "If Target user is Administrator or another user, then it is not your actual user. press CTRL + C now if needed."
-    Write-Host         ""
-    Write-Host        "Press Enter if the information is correct."
-    Read-Host -Prompt "Else stop the script and restart it with manual parameters"
+    Write-Host "If Target user is Administrator or another user, then it is not your actual user. press CTRL + C now if needed."
+    Write-Host ""
+    Write-Host "Press Enter if the information is correct."
+    Write-Host "Else stop the script and restart it with manual parameters"
+    Read-Host  -Prompt ""
 
     # Last resort
     Start-Sleep -Seconds 5
 
-    $applicationDirectory = Join-Path $localAppData $ApplicationName
-    $programDirectory = Join-Path (Join-Path $localAppData "Programs") $ApplicationName
+
+    # On XP, the program and config file are both stored in the same application folder.
+    # On Vista and newer, the program is stored in LocalAppData\Programs\MyProgram.
+    if ([Environment]::OSVersion.Version.Major -lt 6) {
+        $applicationDirectory = Join-Path $localAppData $ApplicationName
+        $programDirectory = $applicationDirectory
+    } else {
+        $applicationDirectory = Join-Path $localAppData $ApplicationName
+        $programDirectory = Join-Path (Join-Path $localAppData "Programs") $ApplicationName
+    }
 
     $programPath = Join-Path $programDirectory $ProgramFileName
     $configFilePath = Join-Path $applicationDirectory "config.ini"
@@ -450,7 +459,26 @@ function Main {
     $locationConfig = Ask-LocationConfiguration
     $intervalHours = Ask-IntervalHours
 
-    Download-ProgramFromRepoUrl -RepoUrl $RepoUrl -OutputFilePath $programPath
+    try {
+        Download-ProgramFromRepoUrl -RepoUrl $RepoUrl -OutputFilePath $programPath
+    } catch {
+        Write-Warning "Automatic download failed !."
+
+        while (-not (Test-Path $programPath)) {
+            Write-Host "Please download $ProgramFileName manually from:"
+            Write-Host "$RepoUrl/releases/latest"
+            Write-Host ""
+            Write-Host "Then copy the file here:"
+            Write-Host $programPath
+            Write-Host "Press Enter when the file has been copied"
+            Read-Host  -Prompt ""
+
+            if (-not (Test-Path $programPath)) {
+                Write-Warning "$ProgramFileName was not found at: $programPath"
+                Write-Host ""
+            }
+        }
+    }
 
     Write-ProgramConfigFile `
         -ConfigFilePath $configFilePath `
