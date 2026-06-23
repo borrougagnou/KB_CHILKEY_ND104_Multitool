@@ -115,8 +115,8 @@ function Restart-InstallerAsAdministrator {
         $arguments = $arguments + " -TargetLocalAppData `"$TargetLocalAppData`""
     }
 
-    if ($TargetUserName -ne "") {
-        $arguments = $arguments + " -TargetUserName `"$TargetUserName`""
+    if ($TargetUser -ne "") {
+        $arguments = $arguments + " -TargetUser `"$TargetUser`""
     }
 
     Write-Host "Restarting installer as administrator..."
@@ -426,11 +426,11 @@ function Main {
         }
     }
 
-    if ($TargetUserName -eq "") {
-        $TargetUserName = $env:USERDOMAIN + "\" + $env:USERNAME
+    if ($TargetUser -eq "") {
+        $TargetUser = $env:USERDOMAIN + "\" + $env:USERNAME
     }
 
-    Write-Host "Target user: $TargetUserName"
+    Write-Host "Target user: $TargetUser"
     Write-Host "Target LocalAppData: $localAppData"
 
     Write-Host         "If Target user is Administrator or another user, then it is not your actual user. press CTRL + C now if needed."
@@ -461,7 +461,7 @@ function Main {
         -ProgramPath $programPath `
         -ConfigFilePath $configFilePath `
         -IntervalHours $intervalHours `
-        -RunAsUser $TargetUserName
+        -RunAsUser $TargetUser
 
     Write-Host ""
     Write-Host "Installation complete."
