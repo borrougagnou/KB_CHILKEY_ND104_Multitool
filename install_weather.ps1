@@ -91,6 +91,7 @@ function Show-ScriptHelp {
     Write-Host "- create scheduled tasks"
     Write-Host ""
     Write-Host "You can also use: Get-Help .\install.ps1 -Full"
+    Write-Host ""
 }
 
 #====================#
@@ -151,6 +152,7 @@ function Download-ProgramFromRepoUrl {
 
     Write-Host "Reading latest release:"
     Write-Host $apiUrl
+    Write-Host ""
 
     $client = New-Object System.Net.WebClient
     $client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.19041.5737")
@@ -196,7 +198,8 @@ function Read-Coordinate {
         $numberText = Read-Host "Enter $CoordinateName using dot decimal format, eg: 44.8378"
 
         if ($numberText -notmatch '^-?[0-9]{1,3}\.[0-9]+$') {
-            Write-Host "Wrong format. Use a dot, for example: 44.8378 or -0.5792"
+            Write-Host "Wrong format." -NoNewline -BackgroundColor Red -ForegroundColor White
+            Write-Host " Use a dot, for example: 44.8378 or -0.5792"
             continue
         }
 
@@ -209,12 +212,12 @@ function Read-Coordinate {
         )
 
         if (-not $parsed) {
-            Write-Host "This is not a valid number."
+            Write-Host "This is not a valid number." -BackgroundColor Red -ForegroundColor White
             continue
         }
 
         if ($number -lt $MinimumValue -or $number -gt $MaximumValue) {
-            Write-Host "$CoordinateName must be between $MinimumValue and $MaximumValue."
+            Write-Host "$CoordinateName must be between $MinimumValue.0 and $MaximumValue.0 ." -BackgroundColor Red -ForegroundColor White
             continue
         }
 
@@ -226,10 +229,16 @@ function Ask-LocationConfiguration {
     while ($true) {
         Write-Host ""
         Write-Host "Location setup:"
-        Write-Host "1 - Use geolocalisation (default)"
-        Write-Host "2 - Enter coordinates manually"
+        Write-Host "1." -NoNewline -ForegroundColor Yellow
+        Write-Host " " -NoNewline
+        Write-Host "Use geolocalisation (default)" -ForegroundColor Green
+        Write-Host "2." -NoNewline -ForegroundColor Yellow
+        Write-Host " " -NoNewline
+        Write-Host "Enter coordinates manually" -ForegroundColor Green
+        Write-Host ""
 
-        $choice = Read-Host "Choose 1 or 2 or press Enter for default"
+        Write-Host "Please choose 1, 2 ? (default: 1):"
+        $choice = Read-Host
 
         if ($choice -eq "" -or $choice -eq "1") {
             $config = New-Object PSObject
@@ -252,33 +261,32 @@ function Ask-LocationConfiguration {
             $config | Add-Member -MemberType NoteProperty -Name Latitude -Value $latitude
             return $config
         }
-
-        Write-Host "Please choose 1, 2 ? (default: 1)"
     }
 }
 
 function Ask-IntervalHours {
     while ($true) {
-        $text = Read-Host "How often should $ApplicationName run (hours)? (1 to 23, default: 6)"
+        Write-Host "How often should $ApplicationName run (hours)? (1 to 23, default: 6):"
+        $text = Read-Host
 
         if ($text -eq "") {
             return 6
         }
 
         if ($text -notmatch '^[0-9]+$') {
-            Write-Host "Please enter a number only."
+            Write-Host "Please enter a number only." -BackgroundColor Red -ForegroundColor White
             continue
         }
 
         $hours = [int]$text
 
         if ($hours -lt 1) {
-            Write-Host "The interval cannot be lower than 1 hour."
+            Write-Host "The interval cannot be lower than 1 hour." -BackgroundColor Red -ForegroundColor White
             continue
         }
 
         if ($hours -gt 23) {
-            Write-Host "The interval cannot be higher than 23 hours."
+            Write-Host "The interval cannot be higher than 23 hours." -BackgroundColor Red -ForegroundColor White
             continue
         }
 
@@ -318,6 +326,248 @@ function Write-ProgramConfigFile {
 # Scheduled tasks #
 #=================#
 
+# Two tasks are created:
+# 1) a periodic task every X hours
+# 2) a logon task so the program starts when the user session opens
+
+#==========================#
+# Scheduled tasks preVista #
+#==========================#
+
+# -On Windows XP and below there's no "/RU INTERACTIVE" in schtasks.
+#   so, we will go directly to /RU user /RP *.
+# -There's also a lot of missing parameter like /IT, /NP, /RL, /F and /Query does not support /TN.
+# -When a user don't have a "password", the task will fail, unless we use SYSTEM account
+#   (SYSTEM account not work for GUI or interactive program)
+#   or if we the "Run only when user is logged on" is check but impossible on this version of schtasks.
+# -Old version of schtasks parse "-config" as a parameter of schtasks instead of a string,
+#   so we need to put the program into a bat file to fix that...
+#   What a headache...
+
+function Create-ScheduledTaskWin2K {
+    param(
+        [string]$TaskName,
+        [string]$Schedule,
+        [string]$Modifier,
+        [string]$CommandLine
+    )
+
+    Write-Host "Creating Win2K scheduled task: $TaskName"
+
+    # Windows is annoying with all of theses "patch" if we want to "ignore error"
+    $deleteCommand = '"' + $SchtasksExePath + '" /Delete /TN "' + $TaskName + '" /F >nul 2>nul'
+    cmd.exe /c $deleteCommand | Out-Null
+
+    # that's ugly.... not thx M$$$
+    $arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine, "/RU", "SYSTEM")
+
+    if ($Modifier -ne "") {
+        $arguments += "/MO"
+        $arguments += $Modifier
+    }
+
+    if ($Schedule -eq "HOURLY") {
+        $arguments += "/ST"
+        $arguments += (Get-Date).AddMinutes(2).ToString("HH:mm:ss")
+    }
+
+    & $SchtasksExePath @arguments
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not create Win2K scheduled task: $TaskName"
+    }
+}
+
+function Create-ProgramScheduledTasksWin2K {
+    param(
+        [string]$ProgramPath,
+        [string]$ConfigFilePath,
+        [string]$SchedulerFilePath,
+        [int]$IntervalHours
+    )
+
+    $launcherDirectory = Split-Path -Parent $SchedulerFilePath
+    if (-not (Test-Path $launcherDirectory)) {
+        New-Item -ItemType Directory -Path $launcherDirectory | Out-Null
+    }
+
+    $launcherLines = @()
+    $launcherLines += '@echo off'
+    $launcherLines += '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
+    Set-Content -Path $SchedulerFilePath -Value $launcherLines -Encoding ASCII
+
+    $programCommand = '"' + $SchedulerFilePath + '"'
+
+    Write-Host "============================="
+    Write-Host "$PeriodicTaskName"
+    Write-Host "============================="
+    Write-Host "$StartupTaskName"
+    Write-Host "============================="
+    Write-Host "$launcherDirectory"
+    Write-Host "============================="
+    Write-Host "$launcherLines"
+    Write-Host "============================="
+    Write-Host "$ProgramPath"
+    Write-Host "============================="
+    Write-Host "$ConfigFilePath"
+    Write-Host "============================="
+    Write-Host "$programCommand"
+    Write-Host "============================="
+
+    Create-ScheduledTask `
+        -TaskName $PeriodicTaskName `
+        -Schedule "HOURLY" `
+        -Modifier ([string]$IntervalHours) `
+        -CommandLine $programCommand
+
+    Create-ScheduledTask `
+        -TaskName $StartupTaskName `
+        -Schedule "ONLOGON" `
+        -Modifier "" `
+        -CommandLine $programCommand
+}
+
+#==========================#
+# Scheduled tasks Vista &+ #
+#==========================#
+
+# run only when the target user is logged on.
+
+function Create-ScheduledTaskVistaAndAbove {
+    param(
+        [string]$TaskName,
+        [string]$Schedule,
+        [string]$Modifier,
+        [string]$CommandLine,
+        [string]$RunAsUser
+    )
+
+    Write-Host "Creating scheduled task: $TaskName"
+
+    # Windows is annoying with all of theses "patch" if we want to "ignore error"
+    $deleteCommand = '"' + $SchtasksExePath + '" /Delete /TN "' + $TaskName + '" /F >nul 2>nul'
+    cmd.exe /c $deleteCommand | Out-Null
+
+    # Run only when the target user is logged on.
+    # that's ugly.... not thx M$$$
+    $arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine, "/RU", $RunAsUser, "/IT")
+    #$arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine)
+
+    if ($Modifier -ne "") {
+        $arguments += "/MO"
+        $arguments += $Modifier
+    }
+
+    if ($Schedule -eq "HOURLY") {
+        $arguments += "/ST"
+        $arguments += (Get-Date).AddMinutes(2).ToString("HH:mm:ss")
+    }
+
+    ## TRY Interactive Argument mode
+    #$interactiveArguments = $arguments + @("/RU", $RunAsUser, "/IT")
+    #& $SchtasksExePath @interactiveArguments
+    #
+    #if ($LASTEXITCODE -eq 0) {
+    #    return
+    #}
+    #
+    #Write-Warning "Could not create task with /RU INTERACTIVE."
+    #
+    #if ($RunAsUser -eq $null -or $RunAsUser -eq "") {
+    #    throw "Could not create scheduled task because the target user is unknown."
+    #}
+    #
+    ## TRY asking the password mode manually
+    #Write-Host "Retrying with user account: $RunAsUser"
+    #Write-Host "Windows may ask for the password of this user."
+    #
+    #$userArguments = $arguments + @("/RU", $RunAsUser, "/RP", "*")
+    #& $SchtasksExePath @userArguments
+
+    & $SchtasksExePath @arguments
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not create scheduled task: $TaskName"
+    }
+}
+
+function Create-ProgramScheduledTasksVistaAndAbove {
+    param(
+        [string]$ProgramPath,
+        [string]$ConfigFilePath,
+        [int]$IntervalHours,
+        [string]$RunAsUser
+    )
+
+    $programCommand = '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
+
+    Write-Host "============================="
+    Write-Host "$PeriodicTaskName"
+    Write-Host "============================="
+    Write-Host "$StartupTaskName"
+    Write-Host "============================="
+    Write-Host "$launcherDirectory"
+    Write-Host "============================="
+    Write-Host "$launcherLines"
+    Write-Host "============================="
+    Write-Host "$ProgramPath"
+    Write-Host "============================="
+    Write-Host "$ConfigFilePath"
+    Write-Host "============================="
+    Write-Host "$programCommand"
+    Write-Host "============================="
+    
+    Create-ScheduledTaskVistaAndAbove `
+        -TaskName $PeriodicTaskName `
+        -Schedule "HOURLY" `
+        -Modifier ([string]$IntervalHours) `
+        -CommandLine $programCommand `
+        -RunAsUser $RunAsUser
+
+    Create-ScheduledTaskVistaAndAbove `
+        -TaskName $StartupTaskName `
+        -Schedule "ONLOGON" `
+        -Modifier "" `
+        -CommandLine $programCommand `
+        -RunAsUser $RunAsUser
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function Create-ScheduledTask {
     param(
         [string]$TaskName,
@@ -329,7 +579,9 @@ function Create-ScheduledTask {
 
     Write-Host "Creating scheduled task: $TaskName"
 
-    & $SchtasksExePath /Delete /TN $TaskName /F 2>$null | Out-Null
+    # Windows is annoying with all of theses "patch" if we want to "ignore error"
+    $deleteCommand = '"' + $SchtasksExePath + '" /Delete /TN "' + $TaskName + '" /F >nul 2>nul'
+    cmd.exe /c $deleteCommand | Out-Null
 
     # that's ugly.... not thx M$$$
     $arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine)
@@ -340,12 +592,31 @@ function Create-ScheduledTask {
     }
 
     if ($Schedule -eq "HOURLY") {
-        $startTime = (Get-Date).AddMinutes(2).ToString("HH:mm")
         $arguments += "/ST"
-        $arguments += $startTime
+        $arguments += (Get-Date).AddMinutes(2).ToString("HH:mm:ss")
     }
 
-    # First try INTERACTIVE mode to avoid storing a password.
+    # On Windows XP there's no "/RU INTERACTIVE" in schtasks.
+    # so, we will go directly to /RU user /RP *.
+    if ([Environment]::OSVersion.Version.Major -lt 6) {
+        if ($RunAsUser -eq $null -or $RunAsUser -eq "") {
+            throw "Could not create scheduled task because the target user is unknown."
+        }
+
+        Write-Host "Creating task with user account $RunAsUser"
+        Write-Host "Windows may ask for the password of this user."
+
+        $MyArguments = $arguments + @("/RU", $RunAsUser, "/RP", "*")
+        & $SchtasksExePath @MyArguments
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not create scheduled task: $TaskName"
+        }
+
+        return
+    }
+
+    # Vista and newer: first try INTERACTIVE mode to avoid storing a password.
     $interactiveArguments = $arguments + @("/RU", "INTERACTIVE")
     & $SchtasksExePath @interactiveArguments
 
@@ -371,10 +642,17 @@ function Create-ScheduledTask {
     }
 }
 
+
+
+
+
+
+
 function Create-ProgramScheduledTasks {
     param(
         [string]$ProgramPath,
         [string]$ConfigFilePath,
+        [string]$SchedulerFilePath,
         [int]$IntervalHours,
         [string]$RunAsUser
     )
@@ -382,8 +660,42 @@ function Create-ProgramScheduledTasks {
     # Two tasks are created:
     # 1) a periodic task every X hours
     # 2) a logon task so the program starts when the user session opens
-    $programCommand = "`"$ProgramPath`" -config `"$ConfigFilePath`""
 
+    if ([Environment]::OSVersion.Version.Major -lt 6) {
+        # Old schtasks parse "-config" as a parameter of schtasks instead of a string,
+        # so we need to put the program into a bat file to fix that...
+        # What a headache...
+        $launcherDirectory = Split-Path -Parent $SchedulerFilePath
+        if (-not (Test-Path $launcherDirectory)) {
+            New-Item -ItemType Directory -Path $launcherDirectory | Out-Null
+        }
+
+        $launcherLines = @()
+        $launcherLines += '@echo off'
+        $launcherLines += '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
+        Set-Content -Path $SchedulerFilePath -Value $launcherLines -Encoding ASCII
+
+        $programCommand = '"' + $SchedulerFilePath + '"'
+    } else {
+        $programCommand = '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
+    }
+
+    Write-Host "============================="
+    Write-Host "$PeriodicTaskName"
+    Write-Host "============================="
+    Write-Host "$StartupTaskName"
+    Write-Host "============================="
+    Write-Host "$launcherDirectory"
+    Write-Host "============================="
+    Write-Host "$launcherLines"
+    Write-Host "============================="
+    Write-Host "$ProgramPath"
+    Write-Host "============================="
+    Write-Host "$ConfigFilePath"
+    Write-Host "============================="
+    Write-Host "$programCommand"
+    Write-Host "============================="
+    
     Create-ScheduledTask `
         -TaskName $PeriodicTaskName `
         -Schedule "HOURLY" `
@@ -415,6 +727,7 @@ function Main {
 
     Write-Host ""
     Write-Host "Installer is running as administrator."
+    Write-Host ""
 
     $localAppData = $TargetLocalAppData
 
@@ -430,31 +743,38 @@ function Main {
         $TargetUser = $env:USERDOMAIN + "\" + $env:USERNAME
     }
 
-    Write-Host "Target user: $TargetUser"
-    Write-Host "Target LocalAppData: $localAppData"
-
-    Write-Host "If Target user is Administrator or another user, then it is not your actual user. press CTRL + C now if needed."
+    Write-Host "====================================="
+    Write-Host "Target user:" -NoNewline -ForegroundColor Yellow
+    Write-Host " $TargetUser" -ForegroundColor Green
+    Write-Host "Target LocalAppData:" -NoNewline -ForegroundColor Yellow
+    Write-Host " $localAppData" -ForegroundColor Green
+    Write-Host "====================================="
     Write-Host ""
-    Write-Host "Press Enter if the information is correct."
-    Write-Host "Else stop the script and restart it with manual parameters"
-    Read-Host  -Prompt ""
+    Write-Host "Press Enter if the " -NoNewline
+    Write-Host "Target user"         -NoNewline -ForegroundColor Yellow
+    Write-Host " and "               -NoNewline
+    Write-Host "Target LocalAppData" -NoNewline -ForegroundColor Yellow
+    Write-Host " are correct."
+    Write-Host "Else stop the script and restart it with manual parameters (execute the script with -help)"
+    Read-Host
 
     # Last resort
     Start-Sleep -Seconds 5
 
-
-    # On XP, the program and config file are both stored in the same application folder.
-    # On Vista and newer, the program is stored in LocalAppData\Programs\MyProgram.
     if ([Environment]::OSVersion.Version.Major -lt 6) {
+        # On XP and below, the program and config file are both stored in the same application folder.
         $applicationDirectory = Join-Path $localAppData $ApplicationName
         $programDirectory = $applicationDirectory
     } else {
+        # On Vista and newer, the program is stored in LocalAppData\Programs\MyProgram.
         $applicationDirectory = Join-Path $localAppData $ApplicationName
         $programDirectory = Join-Path (Join-Path $localAppData "Programs") $ApplicationName
     }
 
     $programPath = Join-Path $programDirectory $ProgramFileName
     $configFilePath = Join-Path $applicationDirectory "config.ini"
+    # Fix for old Windows:
+    $schedulerFilePath = Join-Path $applicationDirectory "launch-scheduler-fix.bat"
 
     $locationConfig = Ask-LocationConfiguration
     $intervalHours = Ask-IntervalHours
@@ -462,20 +782,27 @@ function Main {
     try {
         Download-ProgramFromRepoUrl -RepoUrl $RepoUrl -OutputFilePath $programPath
     } catch {
-        Write-Warning "Automatic download failed !."
+        Write-Host "                                 " -BackgroundColor Black -ForegroundColor Red
+        Write-Host "Error: Automatic download failed." -BackgroundColor Black -ForegroundColor Red
+        Write-Host "                                 " -BackgroundColor Black -ForegroundColor Red
 
         while (-not (Test-Path $programPath)) {
-            Write-Host "Please download $ProgramFileName manually from:"
+            Write-Host "=========================="
+            Write-Host "Please download " -NoNewline
+            Write-Host $ProgramFileName -NoNewline -ForegroundColor Yellow
+            Write-Host " manually from:"
             Write-Host "$RepoUrl/releases/latest"
             Write-Host ""
             Write-Host "Then copy the file here:"
             Write-Host $programPath
+            Write-Host ""
             Write-Host "Press Enter when the file has been copied"
-            Read-Host  -Prompt ""
+            Read-Host
 
             if (-not (Test-Path $programPath)) {
-                Write-Warning "$ProgramFileName was not found at: $programPath"
-                Write-Host ""
+                Write-Host "=========================="
+                Write-Host "Error: $ProgramFileName was not found at: $programPath" -BackgroundColor Black -ForegroundColor Red
+                Write-Host " " -BackgroundColor Black -ForegroundColor Red
             }
         }
     }
@@ -488,6 +815,7 @@ function Main {
     Create-ProgramScheduledTasks `
         -ProgramPath $programPath `
         -ConfigFilePath $configFilePath `
+        -SchedulerFilePath $schedulerFilePath `
         -IntervalHours $intervalHours `
         -RunAsUser $TargetUser
 
@@ -500,5 +828,6 @@ function Main {
     Write-Host "- $StartupTaskName"
 }
 
+cls
 Main
 
