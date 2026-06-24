@@ -52,7 +52,7 @@ $ErrorActionPreference = "Stop"
 
 $ApplicationName = "ND104_Multitool_Weather"
 $RepoUrl = "https://github.com/borrougagnou/KB_CHILKEY_ND104_Multitool"
-$ProgramFileName = "ND104_Multitool_Weather_Weather.exe"
+$ProgramFileName = "ND104_Multitool_Weather.exe"
 
 $PeriodicTaskName = "ND104_Multitool_Weather - Periodic"
 $StartupTaskName = "ND104_Multitool_Weather - User Logon"
@@ -94,6 +94,7 @@ function Show-ScriptHelp {
     Write-Host ""
 }
 
+
 #====================#
 # Is Administrator ? #
 #====================#
@@ -124,6 +125,7 @@ function Restart-InstallerAsAdministrator {
     Start-Process -FilePath $PowerShellExePath -Verb RunAs -ArgumentList $arguments
     exit
 }
+
 
 #==================================#
 # Download exe from github release #
@@ -182,6 +184,7 @@ function Download-ProgramFromRepoUrl {
         throw "Download failed: $OutputFilePath"
     }
 }
+
 
 #====================#
 # Questions for user #
@@ -294,6 +297,7 @@ function Ask-IntervalHours {
     }
 }
 
+
 #=============#
 # Config file #
 #=============#
@@ -321,6 +325,7 @@ function Write-ProgramConfigFile {
 
     Set-Content -Path $ConfigFilePath -Value $lines -Encoding ASCII
 }
+
 
 #=================#
 # Scheduled tasks #
@@ -428,6 +433,7 @@ function Create-ProgramScheduledTasksWin2K {
         -CommandLine $programCommand
 }
 
+
 #==========================#
 # Scheduled tasks Vista &+ #
 #==========================#
@@ -452,7 +458,6 @@ function Create-ScheduledTaskVistaAndAbove {
     # Run only when the target user is logged on.
     # that's ugly.... not thx M$$$
     $arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine, "/RU", $RunAsUser, "/IT")
-    #$arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine)
 
     if ($Modifier -ne "") {
         $arguments += "/MO"
@@ -500,16 +505,12 @@ function Create-ProgramScheduledTasksVistaAndAbove {
         [string]$RunAsUser
     )
 
-    $programCommand = '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
+    $programCommand = '"' + "`"" + $programPath + "`"" + " -config " + $ConfigFilePath + '"'
 
     Write-Host "============================="
     Write-Host "$PeriodicTaskName"
     Write-Host "============================="
     Write-Host "$StartupTaskName"
-    Write-Host "============================="
-    Write-Host "$launcherDirectory"
-    Write-Host "============================="
-    Write-Host "$launcherLines"
     Write-Host "============================="
     Write-Host "$ProgramPath"
     Write-Host "============================="
@@ -517,7 +518,7 @@ function Create-ProgramScheduledTasksVistaAndAbove {
     Write-Host "============================="
     Write-Host "$programCommand"
     Write-Host "============================="
-    
+
     Create-ScheduledTaskVistaAndAbove `
         -TaskName $PeriodicTaskName `
         -Schedule "HOURLY" `
