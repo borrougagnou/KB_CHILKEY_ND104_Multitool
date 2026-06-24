@@ -343,6 +343,7 @@ function Write-ProgramConfigFile {
 # -Old version of schtasks parse "-config" as a parameter of schtasks instead of a string,
 #   so we need to put the program into a bat file to fix that...
 #   What a headache...
+# -Old version also don't support "Path with space"...
 
 function Create-ScheduledTaskWin2K {
     param(
@@ -414,13 +415,13 @@ function Create-ProgramScheduledTasksWin2K {
     Write-Host "$programCommand"
     Write-Host "============================="
 
-    Create-ScheduledTask `
+    Create-ScheduledTaskWin2K `
         -TaskName $PeriodicTaskName `
         -Schedule "HOURLY" `
         -Modifier ([string]$IntervalHours) `
         -CommandLine $programCommand
 
-    Create-ScheduledTask `
+    Create-ScheduledTaskWin2K `
         -TaskName $StartupTaskName `
         -Schedule "ONLOGON" `
         -Modifier "" `
@@ -534,183 +535,6 @@ function Create-ProgramScheduledTasksVistaAndAbove {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function Create-ScheduledTask {
-    param(
-        [string]$TaskName,
-        [string]$Schedule,
-        [string]$Modifier,
-        [string]$CommandLine,
-        [string]$RunAsUser
-    )
-
-    Write-Host "Creating scheduled task: $TaskName"
-
-    # Windows is annoying with all of theses "patch" if we want to "ignore error"
-    $deleteCommand = '"' + $SchtasksExePath + '" /Delete /TN "' + $TaskName + '" /F >nul 2>nul'
-    cmd.exe /c $deleteCommand | Out-Null
-
-    # that's ugly.... not thx M$$$
-    $arguments = @("/Create", "/TN", $TaskName, "/SC", $Schedule, "/TR", $CommandLine)
-
-    if ($Modifier -ne "") {
-        $arguments += "/MO"
-        $arguments += $Modifier
-    }
-
-    if ($Schedule -eq "HOURLY") {
-        $arguments += "/ST"
-        $arguments += (Get-Date).AddMinutes(2).ToString("HH:mm:ss")
-    }
-
-    # On Windows XP there's no "/RU INTERACTIVE" in schtasks.
-    # so, we will go directly to /RU user /RP *.
-    if ([Environment]::OSVersion.Version.Major -lt 6) {
-        if ($RunAsUser -eq $null -or $RunAsUser -eq "") {
-            throw "Could not create scheduled task because the target user is unknown."
-        }
-
-        Write-Host "Creating task with user account $RunAsUser"
-        Write-Host "Windows may ask for the password of this user."
-
-        $MyArguments = $arguments + @("/RU", $RunAsUser, "/RP", "*")
-        & $SchtasksExePath @MyArguments
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "Could not create scheduled task: $TaskName"
-        }
-
-        return
-    }
-
-    # Vista and newer: first try INTERACTIVE mode to avoid storing a password.
-    $interactiveArguments = $arguments + @("/RU", "INTERACTIVE")
-    & $SchtasksExePath @interactiveArguments
-
-    if ($LASTEXITCODE -eq 0) {
-        return
-    }
-
-    Write-Warning "Could not create task with /RU INTERACTIVE."
-
-    if ($RunAsUser -eq $null -or $RunAsUser -eq "") {
-        throw "Could not create scheduled task because the target user is unknown."
-    }
-
-    # No more choice
-    Write-Host "Retrying with user account: $RunAsUser"
-    Write-Host "Windows may ask for the password of this user."
-
-    $userArguments = $arguments + @("/RU", $RunAsUser, "/RP", "*")
-    & $SchtasksExePath @userArguments
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Could not create scheduled task: $TaskName"
-    }
-}
-
-
-
-
-
-
-
-function Create-ProgramScheduledTasks {
-    param(
-        [string]$ProgramPath,
-        [string]$ConfigFilePath,
-        [string]$SchedulerFilePath,
-        [int]$IntervalHours,
-        [string]$RunAsUser
-    )
-
-    # Two tasks are created:
-    # 1) a periodic task every X hours
-    # 2) a logon task so the program starts when the user session opens
-
-    if ([Environment]::OSVersion.Version.Major -lt 6) {
-        # Old schtasks parse "-config" as a parameter of schtasks instead of a string,
-        # so we need to put the program into a bat file to fix that...
-        # What a headache...
-        $launcherDirectory = Split-Path -Parent $SchedulerFilePath
-        if (-not (Test-Path $launcherDirectory)) {
-            New-Item -ItemType Directory -Path $launcherDirectory | Out-Null
-        }
-
-        $launcherLines = @()
-        $launcherLines += '@echo off'
-        $launcherLines += '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
-        Set-Content -Path $SchedulerFilePath -Value $launcherLines -Encoding ASCII
-
-        $programCommand = '"' + $SchedulerFilePath + '"'
-    } else {
-        $programCommand = '"' + $ProgramPath + '" -config "' + $ConfigFilePath + '"'
-    }
-
-    Write-Host "============================="
-    Write-Host "$PeriodicTaskName"
-    Write-Host "============================="
-    Write-Host "$StartupTaskName"
-    Write-Host "============================="
-    Write-Host "$launcherDirectory"
-    Write-Host "============================="
-    Write-Host "$launcherLines"
-    Write-Host "============================="
-    Write-Host "$ProgramPath"
-    Write-Host "============================="
-    Write-Host "$ConfigFilePath"
-    Write-Host "============================="
-    Write-Host "$programCommand"
-    Write-Host "============================="
-    
-    Create-ScheduledTask `
-        -TaskName $PeriodicTaskName `
-        -Schedule "HOURLY" `
-        -Modifier ([string]$IntervalHours) `
-        -CommandLine $programCommand `
-        -RunAsUser $RunAsUser
-
-    Create-ScheduledTask `
-        -TaskName $StartupTaskName `
-        -Schedule "ONLOGON" `
-        -Modifier "" `
-        -CommandLine $programCommand `
-        -RunAsUser $RunAsUser
-}
-
 #======#
 # Main #
 #======#
@@ -759,7 +583,7 @@ function Main {
     Read-Host
 
     # Last resort
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 3
 
     if ([Environment]::OSVersion.Version.Major -lt 6) {
         # On XP and below, the program and config file are both stored in the same application folder.
@@ -774,7 +598,7 @@ function Main {
     $programPath = Join-Path $programDirectory $ProgramFileName
     $configFilePath = Join-Path $applicationDirectory "config.ini"
     # Fix for old Windows:
-    $schedulerFilePath = Join-Path $applicationDirectory "launch-scheduler-fix.bat"
+    $schedulerFilePath = "C:\DOCUME~1\ALLUSE~1\APPLIC~1\ND104_Multitool_Weather\launch-scheduler-fix.bat"
 
     $locationConfig = Ask-LocationConfiguration
     $intervalHours = Ask-IntervalHours
@@ -812,12 +636,19 @@ function Main {
         -LocationConfig $locationConfig `
         -IntervalHours $intervalHours
 
-    Create-ProgramScheduledTasks `
-        -ProgramPath $programPath `
-        -ConfigFilePath $configFilePath `
-        -SchedulerFilePath $schedulerFilePath `
-        -IntervalHours $intervalHours `
-        -RunAsUser $TargetUser
+    if ([Environment]::OSVersion.Version.Major -lt 6) {
+        Create-ProgramScheduledTasksWin2K `
+            -ProgramPath $programPath `
+            -ConfigFilePath $configFilePath `
+            -SchedulerFilePath $schedulerFilePath `
+            -IntervalHours $intervalHours
+    } else {
+        Create-ProgramScheduledTasksVistaAndAbove `
+            -ProgramPath $programPath `
+            -ConfigFilePath $configFilePath `
+            -IntervalHours $intervalHours `
+            -RunAsUser $TargetUser
+    }
 
     Write-Host ""
     Write-Host "Installation complete."
