@@ -55,6 +55,20 @@ Run this in PowerShell:
 powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/install_weather.ps1' -OutFile '$env:TEMP\install_weather.ps1'; Start-Process PowerShell -Verb RunAs -ArgumentList '-File ""$env:TEMP\install_weather.ps1""'"
 ```
 
+> [!TIP]
+> ❤️ For Windows XP users:
+> 1. Download the file `install_weather.ps1` from the repository release page.
+> 2. Open a terminal on your computer.
+> 3. Run the following command (on CMD or POWERSHELL), replacing `<PATH_TO_FILE>` with the location where you downloaded the file:
+> ```powershell
+> powershell -ExecutionPolicy Bypass -Command "& '<PATH_TO_FILE>\install_weather.ps1' -TargetUser ([Environment]::UserName) -TargetLocalAppData ([Environment]::GetFolderPath('LocalApplicationData') + '\')"
+> ```
+> **Example:** If the file is in your Desktop folder:
+> ```powershell
+> powershell -ExecutionPolicy Bypass -Command "& 'C:\Documents and Settings\user\Desktop\install_weather.ps1' -TargetUser ([Environment]::UserName) -TargetLocalAppData ([Environment]::GetFolderPath('LocalApplicationData') + '\')"
+> ```
+> 4. Press Enter to start the installation.
+
 ### 🧠 What happens after install:
 - 📥 Downloads Weather app
 - 📁 Installs to: `AppData\Local\Programs\MyProject`
