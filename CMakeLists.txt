@@ -17,8 +17,9 @@ if (WIN32)
 
 	message(STATUS "Windows Detected")
 	set(HID_SRC ${HIDAPI_DIR}/windows/hid.c)
+	set(SRC_FILE src/clock_update.cpp)
 
-	add_executable(myHIDprogram src/main.cpp ${HID_SRC})
+	add_executable(myHIDprogram src/main_clock.cpp ${HID_SRC} ${SRC_FILE})
 
 	# Windows HID system lib
 	target_link_libraries(myHIDprogram hid)
@@ -27,8 +28,9 @@ elseif(APPLE)
 
 	message(STATUS "MacOS Detected")
 	set(HID_SRC ${HIDAPI_DIR}/mac/hid.c)
+	set(SRC_FILE src/clock_update.cpp)
 
-	add_executable(myHIDprogram src/main.cpp ${HID_SRC})
+	add_executable(myHIDprogram src/main_clock.cpp ${HID_SRC} ${SRC_FILE})
 
 	# MacOS frameworks (IOKit backend)
 	find_library(IOKIT IOKit)
@@ -44,8 +46,9 @@ else()
 
 	message(STATUS "Linux Detected")
 	set(HID_SRC ${HIDAPI_DIR}/libusb/hid.c)
+	set(SRC_FILE src/clock_update.cpp)
 
-	add_executable(myHIDprogram src/main.cpp ${HID_SRC})
+	add_executable(myHIDprogram src/main_clock.cpp ${HID_SRC} ${SRC_FILE})
 
 	# libusb backend
 	target_include_directories(myHIDprogram PRIVATE /usr/include/libusb-1.0)
