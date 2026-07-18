@@ -1,72 +1,22 @@
-## COMPILER
-CC      = gcc
-CXX     = g++
-NAME    = myHIDprogram
+include MakefileFolder/base.mk
+include MakefileFolder/hidapi.mk
 
-CFLAGS  =  -Isrc/external/hidapi
-CFLAGS  += -Wextra -Wall -Werror
+include MakefileFolder/clock_update.mk
+#include MakefileFolder/weather_update.mk
+#include MakefileFolder/picture_upload.mk
 
+# If one of the .mk files defines a rule before "`all:`", Make program may choose that as the default goal.
+# To prevent that explicitly set .DEFAULT_GOAL. (https://www.gnu.org/software/make/manual/html_node/Goals.html)
+.DEFAULT_GOAL := all
 
-# COMMON OBJECTS
-OBJ_COMMON = main_clock.o clock_update.o
-OBJ_LINUX  = hid.o
-OBJ_WIN    = hid.o
-OBJ_MAC    = hid.o
-OBJ = $(OBJ_COMMON)
-
-# PLATFORM DETECTION + OBJECT PER PLATFORM
-ifeq ($(OS),Windows_NT)
-	PLATFORM = WINDOWS
-	OBJ += $(OBJ_WIN)
-else
-	UNAME_S := $(shell uname -s)
-
-	ifeq ($(UNAME_S),Linux)
-		PLATFORM = LINUX
-		OBJ += $(OBJ_LINUX)
-	endif
-
-	ifeq ($(UNAME_S),Darwin)
-		PLATFORM = MAC
-		OBJ += $(OBJ_MAC)
-	endif
-endif
+all: $(PROGRAMS)
 
 
-# BUILD PART
-all: $(NAME)
-
-# Create an object of the C library (HIDAPI)
-hid.o:
-ifeq ($(PLATFORM),WINDOWS)
-	$(CC) -c src/external/hidapi/windows/hid.c -o $@ $(CFLAGS)
-else ifeq ($(PLATFORM),MAC)
-	$(CC) -c src/external/hidapi/mac/hid.c -o $@ $(CFLAGS)
-else
-	$(CC) -c src/external/hidapi/libusb/hid.c -I/usr/include/libusb-1.0 -o $@ $(CFLAGS)
-endif
-
-# Create objects from C++ sources
-%.o: src/%.cpp
-	@echo -e '==> $(PLATFORM) Detected'
-	$(CXX) -c $< $(CXXFLAGS) -o $@
-
-# Build the final executable with all object
-$(NAME): $(OBJ)
-ifeq ($(PLATFORM),WINDOWS)
-	$(CXX) $^ -o $@.exe -lhid
-else ifeq ($(PLATFORM),MAC)
-	$(CXX) $^ -o $@ -framework IOKit -framework CoreFoundation
-else
-	$(CXX) $^ -o $@ -lusb-1.0
-endif
-
-
-# Clean at the end
 clean:
-	rm -f *.o $(NAME) $(NAME).exe
+	rm -rf build
+	rm -f $(PROGRAMS)
+	rm -f $(PROGRAMS:%=%.exe)
 
 
-# RTFM
 .PHONY: all clean
 
