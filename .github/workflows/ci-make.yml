@@ -5,7 +5,8 @@ on:
   pull_request:
 
 env:
-  PROGRAM: myHIDprogram-MAKE
+  PROGRAMS: "clock_update"
+  #PROGRAMS: "clock_update weather_update picture_upload"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -38,27 +39,47 @@ jobs:
     # Build
     - name: Build (Linux/macOS)
       if: runner.os != 'Windows'
-      run: make && mv myHIDprogram ${{ env.PROGRAM }}
+      run: make
 
     - name: Build (Windows)
       if: runner.os == 'Windows'
       shell: msys2 {0}
-      run: make && mv myHIDprogram.exe ${{ env.PROGRAM }}.exe
+      run: make
 
     # Execute (|| true to prevent the program fail if no HID device is connected)
     - name: Run executable (Linux/MacOS)
       if: runner.os != 'Windows'
-      run: ./${{ env.PROGRAM }} || true
+      run: |
+        for bin in $PROGRAMS; do
+          echo "Running $bin"
+          ./$bin || true
+        done
 
     - name: Run executable (Windows)
       if: runner.os == 'Windows'
       shell: msys2 {0}
-      run: ./${{ env.PROGRAM }}.exe || true
+      run: |
+        for exe in $PROGRAMS; do
+          echo "Running $exe"
+          if [[ -f "./$exe.exe" ]]; then
+            "./$exe.exe" || true
+            exit 0
+          else
+            echo "Executable not found!"
+            find .
+          fi
+        done
+        exit 1
 
     - name: Upload binary
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.PROGRAM }}-${{ runner.os }}
+        name: CHILKEY_ND104_Multitool-MAKE-${{ runner.os }}
         path: |
-          build/${{ env.PROGRAM }}*
-          ${{ env.PROGRAM }}*
+          build/clock_update*
+          #build/weather_update*
+          #build/picture_upload*
+          clock_update*
+          #weather_update*
+          #picture_upload*
+
