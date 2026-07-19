@@ -5,7 +5,8 @@ on:
   pull_request:
 
 env:
-  PROGRAM: myHIDprogram-CMAKE
+  PROGRAMS: "clock_update"
+  #PROGRAMS: "clock_update weather_update picture_upload"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -31,30 +32,64 @@ jobs:
 
     # Build
     - name: Configure CMake
-      run: cmake -S . -B build
+      run: cmake -S . -B cmake-build
 
     - name: Build (Linux/macOS)
       if: runner.os != 'Windows'
-      run: cmake --build build  && mv build/myHIDprogram build/${{ env.PROGRAM }}
+      run: cmake --build cmake-build
 
     - name: Build (Windows)
       if: runner.os == 'Windows'
-      run: cmake --build build  && mv build/Debug/myHIDprogram.exe build/${{ env.PROGRAM }}.exe
-
+      run: |
+        cmake --build cmake-build
+        foreach ($exe in $env:PROGRAMS.Split(' ')) {
+          $src = "cmake-build\Debug\${exe}.exe"
+          $dst = "cmake-build\${exe}.exe"
+          if (Test-Path $src) {
+            Write-Host "Moving ${exe}"
+            Move-Item -Path $src -Destination $dst
+          }
+          else {
+            Write-Host "Executable not found: ${src}"
+            Write-Host "Contents of cmake-build:"
+            Get-ChildItem -Recurse cmake-build
+            exit 1
+          }
+        }
 
     # Execute (|| true to prevent the program fail if no HID device is connected)
     - name: Run executable (Linux/MacOS)
       if: runner.os != 'Windows'
-      run: ./build/${{ env.PROGRAM }} || true
+      run: |
+        for bin in $PROGRAMS; do
+          echo "Running $bin"
+          ./cmake-build/$bin || true
+        done
 
     - name: Run executable (Windows)
       if: runner.os == 'Windows'
-      run: .\build\${{ env.PROGRAM }}.exe || true
+      run: |
+        foreach ($exe in $env:PROGRAMS.Split(' ')) {
+          Write-Host "Running ${exe}"
+          if (Test-Path ".\cmake-build\${exe}.exe") {
+            & ".\cmake-build\${exe}.exe"
+            exit 0
+          }
+          else {
+            Write-Host "Executable not found!"
+            Get-ChildItem .\cmake-build -Recurse
+          }
+        }
+        exit 1
 
     - name: Upload binary
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.PROGRAM }}-${{ runner.os }}
+        name: CHILKEY_ND104_Multitool-CMAKE-${{ runner.os }}
         path: |
-          build/${{ env.PROGRAM }}*
-          ${{ env.PROGRAM }}*
+          cmake-build/clock_update*
+          #cmake-build/weather_update*
+          #cmake-build/picture_upload*
+          clock_update*
+          #weather_update*
+          #picture_upload*
