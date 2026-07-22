@@ -108,10 +108,13 @@ function Test-IsAdministrator {
 
 function Restart-InstallerAsAdministrator {
     if ($InstallerScriptPath -eq $null -or $InstallerScriptPath -eq "") {
+        Write-Host "Cannot restart as administrator because the script path is unknown."
+        Write-Host "Press Enter to quit" -NoNewline
+        Read-Host
         throw "Cannot restart as administrator because the script path is unknown."
     }
 
-    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$InstallerScriptPath`""
+    $arguments = "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$InstallerScriptPath`""
 
     if ($TargetLocalAppData -ne "") {
         $arguments = $arguments + " -TargetLocalAppData `"$TargetLocalAppData`""
@@ -122,7 +125,16 @@ function Restart-InstallerAsAdministrator {
     }
 
     Write-Host "Restarting installer as administrator..."
-    Start-Process -FilePath $PowerShellExePath -Verb RunAs -ArgumentList $arguments
+
+    Start-Process `
+        -FilePath $PowerShellExePath `
+        -Verb RunAs `
+        -ArgumentList $arguments `
+        -Wait
+
+    Write-Host "Press Enter to quit" -NoNewline
+    Read-Host
+    
     exit
 }
 
@@ -661,5 +673,15 @@ function Main {
 }
 
 cls
-Main
+try {
+    Main
+} catch {
+    Write-Host ""
+    Write-Host "ERROR:"
+    Write-Host $_.Exception.Message
+    Write-Host ""
+    Write-Host "Press Enter to quit" -NoNewline
+    Read-Host
+    exit 1
+}
 
