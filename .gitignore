@@ -37,6 +37,9 @@
 *.out
 *.app
 myHIDprogram
+clock_update
+weather_update
+picture_upload
 
 # debug information files
 *.dwo
