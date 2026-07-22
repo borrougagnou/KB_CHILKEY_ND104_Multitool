@@ -7,7 +7,7 @@ Tools designed to extend and automate your Chilkey ND104 keyboard experience.
 Here's a list of plugin:
 
 - ✅ : Clock (tested and working on Linux)
-- ⏳ : Weather
+- ⏳ : Weather (HID communication done, now need to implement website request )
 - ❌ : ...
 - ❌ : ...
 
@@ -57,6 +57,21 @@ Choose ONE method:
 - Connect the Keyboard in wired mode
 - Execute the `clock_update` program (no need admin/root right)
 - The program will read the clock on your computer and synchronize it with the keyboard
+
+
+### Weather
+
+- Connect the Keyboard in wired mode
+- Connect internet.
+- Execute the `weather_update` program (no need admin/root right)
+- The program will check if there's parameter or if a config file exis
+    - if yes read the value, synchronize it with the keyboard
+    - if no, throw an error about missing parameter/file
+
+> [!IMPORTANT]
+>
+> The parameter value are **above** the file value !
+
 
 ---
  
