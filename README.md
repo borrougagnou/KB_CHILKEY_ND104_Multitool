@@ -31,17 +31,15 @@ Here's a list of plugin:
 
 ## 🐧 Linux setup (required)
 
-> [!INFO]
->
-> If you already followed "Firmware Upgrade", you don't need to do this step
+Linux users must run this first.
 
-⚠️ Linux users must run this first with **sudo/root permission**
+⚠️ **sudo/root permission** are requested only for the Driver and the Weather part.
 
 Choose ONE method:
 
-- with **curl**:  `sudo sh -c "$(curl -fsSL https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/install_keyboard_driver.sh)"`
-- with **wget**:  `sudo sh -c "$(wget -O-   https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/install_keyboard_driver.sh)"`
-- with **fetch**: `sudo sh -c "$(fetch -o - https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/install_keyboard_driver.sh)"`
+- with **curl**:  `sh -c "$(curl -fsSL https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/SETUP.sh)"`
+- with **wget**:  `sh -c "$(wget -O-   https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/SETUP.sh)"`
+- with **fetch**: `sh -c "$(fetch -o - https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/master/SETUP.sh)"`
 
 ### What it does:
 
