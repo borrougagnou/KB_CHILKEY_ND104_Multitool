@@ -1,4 +1,4 @@
-#include "include/weather_update.hh"
+#include "include/weather_orchestrator.hh"
 
 #include <hidapi.h>
 
@@ -21,9 +21,9 @@ int main() {
     {
         err = hid_error(nullptr);
         if (err)
-            std::wcerr << "ERROR: Unable to open device: " << err << std::endl;
+            std::wcerr << "ERROR: Unable to open device: incorrect permission or " << err << std::endl;
         else
-            std::cerr << "ERROR: Unable to open device (unknown)" << std::endl;
+            std::cerr << "ERROR: Unable to open device (unknown): maybe incorrect permission" << std::endl;
 
         hid_exit();
         return 1;
