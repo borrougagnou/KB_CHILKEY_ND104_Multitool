@@ -1,24 +1,10 @@
-#include "include/weather_update.hh"
+#include "include/weather_hid_protocol.hh"
 
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 
-
-enum weather_icon : std::uint8_t {
-    weather_sunny          = 0x00,
-    weather_heavy_clouds   = 0x01, // same
-    weather_overcast       = 0x01, // same
-    weather_partly_cloudy  = 0x02,
-    weather_cloudy         = 0x03,
-    weather_rain           = 0x04,
-    weather_snow           = 0x05,
-    weather_clear_night    = 0x06,
-    weather_cloudy_night   = 0x07,
-    weather_fog            = 0x08,
-    weather_thunderstorm   = 0x09
-};
 
 constexpr std::size_t   weather_header_size  = 10;
 constexpr std::size_t   weather_payload_size = 32;
@@ -52,12 +38,6 @@ enum weather_offset : std::size_t {
     weather_padding_offset             = 0x15  // from 0x15 to 0x1F
 };
 
-struct weather_data {
-    weather_icon icon;
-    std::int16_t current_temperature;
-    std::int16_t maximum_temperature;
-    std::int16_t minimum_temperature;
-};
 
 constexpr std::size_t   weather_hid_report_size = weather_payload_size + 1;
 constexpr unsigned char weather_hid_report_id   = 0x00;
@@ -235,7 +215,7 @@ static void debug_print_buffer(const char* name, const unsigned char* buffer, st
 }
 #endif
 
-bool update_weather(hid_device* handle)
+bool send_weather(hid_device *handle, const weather_data *weather)
 {
     std::size_t         offset;
     int                 written;
@@ -321,12 +301,12 @@ bool update_weather(hid_device* handle)
 #else
     // WE WILL SEND DATA HERE !!
     // HERE AN EXAMPLE :
-    weather_data weather;
-    weather.icon                = weather_snow;
-    weather.current_temperature = -10;
-    weather.maximum_temperature = 999;
-    weather.minimum_temperature = -999;
-    build_weather_payload(payload, &weather);
+    //weather_data weather;
+    //weather.icon                = weather_snow;
+    //weather.current_temperature = -10;
+    //weather.maximum_temperature = 999;
+    //weather.minimum_temperature = -999;
+    build_weather_payload(payload, weather);
 #endif
 
     // HIDAPI explicitly requires the report ID as the first byte, including 0x00 for devices without numbered reports
