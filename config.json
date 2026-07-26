@@ -1,0 +1,24 @@
+{
+  "Information": {
+    "city": "MYCITY",
+    "country": "MYCOUNTRY",
+    "lat": 0.0000,
+    "lon": -0.0
+  },
+  "Keyboard": {
+    "Keyboard_VID": "6d67",
+    "Keyboard_PID": "016c",
+    "Screen_VID": "5542",
+    "Screen_PID": "0001"
+  },
+  "Weather": {
+    "temperature_unit": "C",
+    "geolocation": true,
+    "weather_api": "open-meteo",
+    "periodic_run": "1h",
+    "other_weather_api_available": [
+      "open-meteo",
+      "NONE"
+    ]
+  }
+}
