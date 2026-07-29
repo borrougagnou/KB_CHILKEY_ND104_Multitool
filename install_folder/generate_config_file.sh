@@ -20,7 +20,9 @@ country=""
 city=""
 latitude=""
 longitude=""
+temps_unit=""
 geolocation="false"
+weather_api=""
 json_tool=""
 location_response=""
 KB_VID="6d67"
@@ -107,6 +109,59 @@ download_location()
 }
 
 
+################### TEMPERATURE
+
+
+ask_temps_unit()
+{
+    local question="$1"
+    local answer=""
+
+    while true; do
+        read -r -p "$question [C/F]: " answer || exit 1
+
+        case "$answer" in
+            c|C|Celsius|celsius|CELSIUS)
+                temps_unit="C"
+                return 0
+                ;;
+            f|F|Fahrenheit|fahrenheit|FAHRENHEIT)
+                temps_unit="F"
+                return 1
+                ;;
+            *)
+                echo "Please answer C or F."
+                ;;
+        esac
+    done
+}
+
+
+read_temps_unit()
+{
+    local prompt="$1"
+    local value=""
+
+    while true; do
+        read -r -p "$prompt: " value || exit 1
+
+        case "$value" in
+            c|C|Celsius|celsius|CELSIUS)
+                temps_unit="C"
+                return
+                ;;
+            f|F|Fahrenheit|fahrenheit|FAHRENHEIT)
+                temps_unit="F"
+                return
+                ;;
+            *)
+                echo "Invalid input. Expected C or F. (Celsius or Fahrenheit)" >&2
+                ;;
+        esac
+    done
+}
+
+
 ################### LOCATION MANUAL
 
 
@@ -167,9 +222,10 @@ edit_location_field()
     echo "  2) City"
     echo "  3) Latitude"
     echo "  4) Longitude"
+    echo "  5) Temperature Unit (C or F)"
 
     while true; do
-        read -r -p "Choice [1-4]: " choice || exit 1
+        read -r -p "Choice [1-5]: " choice || exit 1
 
         case "$choice" in
             1)
@@ -188,8 +244,12 @@ edit_location_field()
                 longitude=$(read_coordinate "Longitude" "-180" "180")
                 return
                 ;;
+            5)
+                read_temps_unit "Temperature Unit (C or F)"
+                return
+                ;;
             *)
-                echo "Please enter a number from 1 to 4."
+                echo "Please enter a number from 1 to 5."
                 ;;
         esac
     done
@@ -199,6 +259,16 @@ edit_location_field()
 show_location()
 {
     echo
+    echo "Weather information:"
+    case "$temps_unit" in
+            C)
+                echo "  Temperature unit: $temps_unit (Celsius)"
+                ;;
+            F)
+                echo "  Temperature unit: $temps_unit (Fahrenheit)"
+                ;;
+        esac
+    echo ""
     echo "Location information:"
     echo "  Country:   $country"
     echo "  City:      $city"
@@ -382,10 +452,12 @@ write_config()
         if ! jq -n \
             --arg city    "$city"    \
             --arg country "$country" \
-            --arg KB_VID     "$KB_VID"     \
-            --arg KB_PID     "$KB_PID"     \
-            --arg SCREEN_VID "$SCREEN_VID" \
-            --arg SCREEN_PID "$SCREEN_PID" \
+            --arg KB_VID      "$KB_VID"      \
+            --arg KB_PID      "$KB_PID"      \
+            --arg SCREEN_VID  "$SCREEN_VID"  \
+            --arg SCREEN_PID  "$SCREEN_PID"  \
+            --arg temps_unit  "$temps_unit"  \
+            --arg weather_api "$weather_api" \
             --argjson latitude    "$latitude"    \
             --argjson longitude   "$longitude"   \
             --argjson geolocation "$geolocation" \
@@ -403,8 +475,13 @@ write_config()
                 "Screen_PID":   $SCREEN_PID
               },
               "Weather": {
-                "geolocation":  $geolocation,
-                "periodic_run": "1h"
+                "temperature_unit": $temps_unit,
+                "geolocation": $geolocation,
+                "weather_api": $weather_api,
+                "periodic_run": "1h",
+                "other_weather_api_available": [
+                  "open-meteo"
+                ]
               }
             }' > "$temporary_file"; then
 
@@ -417,10 +494,12 @@ write_config()
              KB_VID="$KB_VID"         \
              KB_PID="$KB_PID"         \
              SCREEN_VID="$SCREEN_VID" \
-             SCREEN_PID="$SCREEN_PID" \ 
+             SCREEN_PID="$SCREEN_PID" \
              LATITUDE="$latitude"   \
              LONGITUDE="$longitude" \
+             TEMPS_UNIT="$temps_unit"   \
              GEOLOCATION="$geolocation" \
+             WEATHER_API="$weather_api" \
              python3 - "$temporary_file" <<'PYTHON_SCRIPT'
 import json
 import os
@@ -440,8 +519,13 @@ config = {
         "Screen_PID":   os.environ["SCREEN_PID"]
     },
     "Weather": {
+        "temperature_unit": os.environ["TEMPS_UNIT"],
         "geolocation":  os.environ["GEOLOCATION"] == "true",
+        "weather_api": os.environ["WEATHER_API"],
         "periodic_run": "30m",
+        "other_weather_api_available": [
+          "open-meteo"
+        ]
     },
 }
 
@@ -491,9 +575,11 @@ main()
     echo "| Config file generator     |"
     echo "| by borrou                 |"
     echo "|                           |"
-    echo "| Version 2026-07-25        |"
+    echo "| Version 1.0 - 2026-09-01  |"
     echo " =========================== "
     echo
+
+    ask_temps_unit "Use Celsius or Fahrenheit?"
 
     if ask_yes_no "Use the online service to detect your actual location?"; then
         get_online_location
@@ -509,6 +595,16 @@ main()
     else
         geolocation="false"
     fi
+
+    echo
+
+    if ask_yes_no "Use open-meteo as Weather source ?"; then
+        weather_api="open-meteo"
+    else
+        weather_api=$(read_required_value "Weather source")
+    fi
+
+    echo
 
     if ! write_config; then
         echo "Error: unable to create the config file:" >&2
