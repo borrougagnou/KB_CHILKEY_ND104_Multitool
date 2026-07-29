@@ -1,0 +1,82 @@
+# Makefile.deps
+
+MAKE ?= make
+DEPS_FOLDER := MakefileFolder
+
+# ------------------------------------------------------------------
+# > WARNING !
+# > Because we do not use stamp files, the Makefile checks:
+# >     src/external/<lib>/<Platform>/include/...
+# >     src/external/<lib>/<Platform>/lib/...
+# > It means:
+# > - if you change `ENABLE_ZLIB` in `curl.Makefile`, curl will not automatically rebuild
+# > - if you change version numbers, it will not automatically rebuild
+# > - if you change compiler flags, it will not automatically rebuild
+# > In that case, run:
+# >     `make -f MakefileFolder/curl.Makefile rebuild`
+# > or:
+# >     `make -f MakefileFolder/curl.Makefile clean-install`
+# >     `make -f MakefileFolder/curl.Makefile`
+# ------------------------------------------------------------------
+#
+# Minimal dependency order:
+#   1. OpenSSL
+#   2. curl
+#
+# If you enable optional dependencies inside curl.Makefile,
+# then build them before curl.
+# ------------------------------------------------------------------
+
+all:
+	$(MAKE) -f $(DEPS_FOLDER)/openssl.Makefile
+	$(MAKE) -f $(DEPS_FOLDER)/zlib.Makefile
+	$(MAKE) -f $(DEPS_FOLDER)/brotli.Makefile
+	$(MAKE) -f $(DEPS_FOLDER)/zstd.Makefile
+	$(MAKE) -f $(DEPS_FOLDER)/nghttp2.Makefile
+	$(MAKE) -f $(DEPS_FOLDER)/curl.Makefile
+
+
+check-source:
+	-$(MAKE) -f $(DEPS_FOLDER)/curl.Makefile    check-source
+	-$(MAKE) -f $(DEPS_FOLDER)/nghttp2.Makefile check-source
+	-$(MAKE) -f $(DEPS_FOLDER)/zstd.Makefile    check-source
+	-$(MAKE) -f $(DEPS_FOLDER)/brotli.Makefile  check-source
+	-$(MAKE) -f $(DEPS_FOLDER)/zlib.Makefile    check-source
+	-$(MAKE) -f $(DEPS_FOLDER)/openssl.Makefile check-source
+
+
+check-install:
+	-$(MAKE) -f $(DEPS_FOLDER)/curl.Makefile    check-install
+	-$(MAKE) -f $(DEPS_FOLDER)/nghttp2.Makefile check-install
+	-$(MAKE) -f $(DEPS_FOLDER)/zstd.Makefile    check-install
+	-$(MAKE) -f $(DEPS_FOLDER)/brotli.Makefile  check-install
+	-$(MAKE) -f $(DEPS_FOLDER)/zlib.Makefile    check-install
+	-$(MAKE) -f $(DEPS_FOLDER)/openssl.Makefile check-install
+
+
+clean:
+	-$(MAKE) -f $(DEPS_FOLDER)/curl.Makefile    clean
+	-$(MAKE) -f $(DEPS_FOLDER)/nghttp2.Makefile clean
+	-$(MAKE) -f $(DEPS_FOLDER)/zstd.Makefile    clean
+	-$(MAKE) -f $(DEPS_FOLDER)/brotli.Makefile  clean
+	-$(MAKE) -f $(DEPS_FOLDER)/zlib.Makefile    clean
+	-$(MAKE) -f $(DEPS_FOLDER)/openssl.Makefile clean
+
+clean-build:
+	-$(MAKE) -f $(DEPS_FOLDER)/curl.Makefile    clean-build
+	-$(MAKE) -f $(DEPS_FOLDER)/nghttp2.Makefile clean-build
+	-$(MAKE) -f $(DEPS_FOLDER)/zstd.Makefile    clean-build
+	-$(MAKE) -f $(DEPS_FOLDER)/brotli.Makefile  clean-build
+	-$(MAKE) -f $(DEPS_FOLDER)/zlib.Makefile    clean-build
+	-$(MAKE) -f $(DEPS_FOLDER)/openssl.Makefile clean-build
+
+clean-install:
+	-$(MAKE) -f $(DEPS_FOLDER)/curl.Makefile    clean-install
+	-$(MAKE) -f $(DEPS_FOLDER)/nghttp2.Makefile clean-install
+	-$(MAKE) -f $(DEPS_FOLDER)/zstd.Makefile    clean-install
+	-$(MAKE) -f $(DEPS_FOLDER)/brotli.Makefile  clean-install
+	-$(MAKE) -f $(DEPS_FOLDER)/zlib.Makefile    clean-install
+	-$(MAKE) -f $(DEPS_FOLDER)/openssl.Makefile clean-install
+
+.PHONY: all check-source check-install clean clean-build clean-install
+
