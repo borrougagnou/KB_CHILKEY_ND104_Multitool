@@ -2,9 +2,31 @@ include MakefileFolder/base.mk
 include MakefileFolder/hidapi.mk
 
 
-# UNIT_TEST
+########################
+# IMPORTANT ABOUT cURL #
+########################
+# FIRST YOU NEED TO INSTALL: pkg-config
+# the cURL Library should be executed FIRST and SEPARATELY from this Makefile,
+# here's how to do it:
+# - Check if you have downloaded/extracted source first with:
+#     `make -f Makefile.deps check-source`
+# - when all are downloaded, build:
+#     `make -f Makefile.deps`
+# - when the build is finished:
+#     `make -f Makefile.deps check-install`
+# Done 
+
+#############
+# UNIT_TEST #
+#############
+# We will test here if external libraries are working well:
+
+### be sure to have config.json:
 include MakefileFolder/test_json.mk
+
+# be sure internet is working:
 include MakefileFolder/test_curl.mk
+################
 
 
 #PROGRAM
