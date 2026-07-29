@@ -1,0 +1,12 @@
+prefix=/home/myuser/project/KB_CHILKEY_ND104_Multitool/src/external/brotli/Linux
+exec_prefix=/home/myuser/project/KB_CHILKEY_ND104_Multitool/src/external/brotli/Linux
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libbrotlidec
+URL: https://github.com/google/brotli
+Description: Brotli decoder library
+Version: 1.1.0
+Libs: -L${libdir} -lbrotlidec
+Requires.private: libbrotlicommon >= 1.1.0
+Cflags: -I${includedir}

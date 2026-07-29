@@ -1,0 +1,11 @@
+prefix=/home/myuser/project/KB_CHILKEY_ND104_Multitool/src/external/zstd/Linux
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: zstd
+Description: fast lossless compression algorithm library
+URL: https://facebook.github.io/zstd/
+Version: 1.5.6
+Libs: -L${libdir} -lzstd
+Cflags: -I${includedir}
