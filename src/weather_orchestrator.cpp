@@ -19,6 +19,7 @@ bool update_weather(hid_device* handle)
     weather_configuration configuration;
     weather_location      location;
     weather_data          weather;
+    http_client           http;
     std::string           error_message;
     std::string           log_message;
     bool                  operation_succeeded;
@@ -36,44 +37,32 @@ bool update_weather(hid_device* handle)
         weather.minimum_temperature = 0;
 
         if (!send_weather(handle, &weather))
-            log_weather_error("Unable to send data on the keyboard");
+            log_weather_error("Unable to send the invalid-configuration data to the keyboard");
 
         return false;
     }
 
-    // Now we will load the http (http_request.cpp)
-    operation_succeeded = initialize_http(&error_message);
-    if (!operation_succeeded)
+    if (configuration.use_geolocation)
+        operation_succeeded = get_ip_geolocation(&http, &location, &error_message);
+    else
     {
-        log_message = "Unable to initialize HTTP support: " + error_message;
-        log_weather_error(log_message.c_str());
-        return false;
+        location.city      = configuration.information.city;
+        location.country   = configuration.information.country;
+        location.latitude  = configuration.information.latitude;
+        location.longitude = configuration.information.longitude;
+
+        operation_succeeded = true;
     }
 
-    operation_succeeded = resolve_weather_location(&configuration, &location, &error_message);
     if (!operation_succeeded)
     {
-        cleanup_http();
         log_message = "Unable to resolve the weather location: " + error_message;
         log_weather_error(log_message.c_str());
         return false;
     }
 
-    // do we have other weather provider ?
-    // add them here
-    switch (configuration.provider)
-    {
-        case weather_provider_open_meteo:
-            operation_succeeded = get_open_meteo_weather(&location, configuration.unit, &weather, &error_message);
-            break;
-
-        default:
-            error_message = "The selected weather provider is not implemented";
-            operation_succeeded = false;
-            break;
-    }
-
-    cleanup_http();
+    // weather provider will be called here using a "function-pointer registry"
+    operation_succeeded = configuration.provider(&http, &location, configuration.unit, &weather, &error_message);
 
     if (!operation_succeeded)
     {

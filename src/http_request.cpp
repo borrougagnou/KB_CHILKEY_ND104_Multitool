@@ -6,11 +6,14 @@
 #include <string>
 
 
-static const std::size_t http_maximum_response_size = 1024u * 1024u; //unsigned int
-static const long        http_connection_timeout    = 10L;
-static const long        http_request_timeout       = 20L;
-static const long        http_maximum_redirects     = 5L;
-static const char        http_user_agent[]          = "weather-app/1.0";
+static const std::size_t   http_maximum_response_size = 1024u * 1024u; //unsigned int
+static const long          http_connection_timeout    = 10L;
+static const long          http_request_timeout       = 20L;
+static const long          http_maximum_redirects     = 5L;
+static const char          http_user_agent[]          = "weather-app/1.0";
+static const std::uint32_t seconds_per_minute         = 60;
+static const std::uint32_t seconds_per_hour           = 60 * 60;
+static const std::uint32_t seconds_per_day            = 24 * 60 * 60;
 
 static std::size_t append_http_response(char *received_data, std::size_t item_size, std::size_t item_count, void *user_data)
 {
@@ -29,11 +32,6 @@ static std::size_t append_http_response(char *received_data, std::size_t item_si
     response->body.append(received_data, received_size);
 
     return received_size;
-}
-
-void cleanup_http()
-{
-    curl_global_cleanup();
 }
 
 bool get_http_response(const std::string *url, http_response *response, std::string* error_message)
@@ -130,7 +128,18 @@ bool get_http_response(const std::string *url, http_response *response, std::str
     return true;
 }
 
+// Cleanup curl initialized resources (look the comment below)
+// https://curl.se/libcurl/c/curl_global_cleanup.html
+void cleanup_http()
+{
+    curl_global_cleanup();
+}
 
+
+// Libcurl requires global initialization before normal libcurl operations.
+// This prepares global resources used by libcurl and its supporting libraries,
+// including parts of the TLS environment. The matching global cleanup releases those resources.
+// https://curl.se/libcurl/c/curl_global_init.html
 bool initialize_http(std::string* error_message)
 {
     CURLcode curl_result;
