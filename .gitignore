@@ -49,6 +49,17 @@ build/
 Build/
 build-*/
 
+# External directories
+src/external/source/brotli-extracted/*
+src/external/source/curl-extracted/*
+src/external/source/openssl-extracted/*
+src/external/source/nghttp2-extracted/*
+src/external/source/zstd-extracted/*
+src/external/source/zlib-extracted/*
+
+# Placeholder
+.placeholder
+
 # CMake generated files
 cmake-build/
 CMakeFiles/
