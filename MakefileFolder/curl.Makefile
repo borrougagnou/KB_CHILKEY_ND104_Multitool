@@ -492,7 +492,9 @@ compile: check-deps check-source
 			} >> lib/curl_config.h; \
 			;; \
 	esac && \
-	$(MAKE) LIBS="$(CURL_LIBS)" -j$(JOBS)
+	perl -pi -e 's/^LIBS\s*=\s*(.*)/LIBS = $1 -lnghttp2/' src/Makefile && \
+	perl -pi -e 's/^curl_LDADD\s*=\s*(.*)/curl_LDADD = $1 -lnghttp2/' src/Makefile && \
+	$(MAKE) -j$(JOBS)
 
 install: compile
 	cd "$(BUILD_DIR)/src" && \
