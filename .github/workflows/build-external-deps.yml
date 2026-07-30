@@ -107,6 +107,10 @@ jobs:
           ${{ matrix.make_cmd }} -f MakefileFolder/brotli.Makefile
           ${{ matrix.make_cmd }} -f MakefileFolder/zstd.Makefile
           ${{ matrix.make_cmd }} -f MakefileFolder/nghttp2.Makefile
+          echo "====PAUSE MANUAL CHECK===="
+          echo "COMMAND: find src/external/curl src/external/nghttp2 src/external/openssl src/external/zlib src/external/zstd src/external/brotli -type f"
+          find src/external/curl src/external/nghttp2 src/external/openssl src/external/zlib src/external/zstd src/external/brotli -type f
+          echo "=========================="
           ${{ matrix.make_cmd }} -f MakefileFolder/curl.Makefile
 
       - name: Package built libraries
