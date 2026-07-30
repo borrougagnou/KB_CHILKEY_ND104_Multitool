@@ -492,7 +492,7 @@ compile: check-deps check-source
 			} >> lib/curl_config.h; \
 			;; \
 	esac && \
-	$(MAKE) -j$(JOBS)
+	$(MAKE) LIBS="$(CURL_LIBS)" -j$(JOBS)
 
 install: compile
 	cd "$(BUILD_DIR)/src" && \
