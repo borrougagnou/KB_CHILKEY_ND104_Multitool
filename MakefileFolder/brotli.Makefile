@@ -23,9 +23,16 @@ EXTERNAL_ROOT  ?= $(PROJECT_ROOT)/src/external
 BUILD_ROOT     ?= $(PROJECT_ROOT)/build/external
 
 CROSS_PREFIX ?=
-CC := $(CROSS_PREFIX)gcc
-AR := $(CROSS_PREFIX)ar
+ifeq ($(OS),Windows_NT)
+CC     := $(CROSS_PREFIX)gcc.exe
+AR     := $(CROSS_PREFIX)ar.exe
+RANLIB := $(CROSS_PREFIX)ranlib.exe
+else
+CC     := $(CROSS_PREFIX)gcc
+AR     := $(CROSS_PREFIX)ar
 RANLIB := $(CROSS_PREFIX)ranlib
+endif
+
 
 CC_PATH     := $(shell command -v $(CC) 2>/dev/null)
 AR_PATH     := $(shell command -v $(AR) 2>/dev/null)
@@ -131,15 +138,18 @@ REQUIRED_LIB_ENC    := $(INSTALL_DIR)/lib/libbrotlienc.a
 # Platform flags
 # ==================================================================
 
-BROTLI_CFLAGS :=
+BROTLI_CFLAGS           :=
 BROTLI_EXE_LINKER_FLAGS :=
+BROTLI_INSTALL_PREFIX   := $(INSTALL_DIR)
 
 ifeq ($(PLATFORM_DIR),Windows-x32)
+BROTLI_INSTALL_PREFIX := $(shell cygpath -m "$(INSTALL_DIR)")
 BROTLI_CFLAGS += -m32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN
 BROTLI_EXE_LINKER_FLAGS += -m32 -static -static-libgcc
 endif
 
 ifeq ($(PLATFORM_DIR),Windows-x64)
+BROTLI_INSTALL_PREFIX := $(shell cygpath -m "$(INSTALL_DIR)")
 BROTLI_CFLAGS += -m64 -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -DWIN32_LEAN_AND_MEAN
 BROTLI_EXE_LINKER_FLAGS += -m64 -static -static-libgcc
 endif
@@ -218,7 +228,7 @@ compile: check-source check-tools
 		-DCMAKE_MAKE_PROGRAM="$(MAKE_PATH)" \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DBUILD_SHARED_LIBS=OFF \
-		-DCMAKE_INSTALL_PREFIX="$(INSTALL_DIR)" \
+		-DCMAKE_INSTALL_PREFIX="$(BROTLI_INSTALL_PREFIX)" \
 		-DCMAKE_INSTALL_LIBDIR=lib \
 		-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 		-DCMAKE_C_COMPILER="$(CC_PATH)" \
