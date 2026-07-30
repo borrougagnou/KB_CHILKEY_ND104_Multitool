@@ -152,7 +152,20 @@ PLATFORM_LDFLAGS  += -m32 -static -static-libgcc -static-libstdc++ \
 PLATFORM_LIBS += -lws2_32 -lcrypt32 -lgdi32 -ladvapi32 -luser32
 
 CURL_HOST := --host=i686-w64-mingw32
+CURL_BUILD := --build=i686-w64-mingw32
 CURL_EXTRA_CONFIG += --disable-threaded-resolver
+
+CURL_CONF_CACHE := \
+ac_cv_header_windows_h=yes \
+ac_cv_header_winsock2_h=yes \
+ac_cv_func_ioctlsocket=yes \
+ac_cv_func_connect=yes \
+ac_cv_func_socket=yes \
+ac_cv_func_select=yes \
+ac_cv_func_recv=yes \
+ac_cv_func_send=yes \
+ac_cv_func_getpeername=yes \
+ac_cv_func_getsockname=yes
 endif
 
 ifeq ($(PLATFORM_DIR),Windows-x64)
@@ -166,6 +179,19 @@ PLATFORM_LDFLAGS += -m64 -static -static-libgcc -static-libstdc++ \
 PLATFORM_LIBS += -lws2_32 -lcrypt32 -lgdi32 -ladvapi32 -luser32
 
 CURL_HOST := --host=x86_64-w64-mingw32
+CURL_BUILD := --build=x86_64-w64-mingw32
+
+CURL_CONF_CACHE := \
+ac_cv_header_windows_h=yes \
+ac_cv_header_winsock2_h=yes \
+ac_cv_func_ioctlsocket=yes \
+ac_cv_func_connect=yes \
+ac_cv_func_socket=yes \
+ac_cv_func_select=yes \
+ac_cv_func_recv=yes \
+ac_cv_func_send=yes \
+ac_cv_func_getpeername=yes \
+ac_cv_func_getsockname=yes
 endif
 
 ifeq ($(PLATFORM_DIR),Linux)
