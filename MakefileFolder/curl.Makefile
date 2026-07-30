@@ -477,15 +477,17 @@ compile: check-deps check-source
 		Windows-*) \
 			echo "Patching lib/curl_config.h for Windows sockets"; \
 			{ \
-				echo "$(HASH)undef HAVE_WINDOWS_H"; \
+				echo "$(HASH)undef  HAVE_WINDOWS_H"; \
 				echo "$(HASH)define HAVE_WINDOWS_H 1"; \
-				echo "$(HASH)undef HAVE_WINSOCK2_H"; \
+				echo "$(HASH)undef  HAVE_WINSOCK2_H"; \
 				echo "$(HASH)define HAVE_WINSOCK2_H 1"; \
-				echo "$(HASH)undef HAVE_WS2TCPIP_H"; \
+				echo "$(HASH)undef  HAVE_WS2TCPIP_H"; \
 				echo "$(HASH)define HAVE_WS2TCPIP_H 1"; \
-				echo "$(HASH)undef HAVE_IOCTLSOCKET"; \
+				echo "$(HASH)undef  HAVE_IOCTLSOCKET"; \
 				echo "$(HASH)define HAVE_IOCTLSOCKET 1"; \
-				echo "$(HASH)undef USE_WINSOCK"; \
+				echo "$(HASH)undef  HAVE_IOCTLSOCKET_FIONBIO"; \
+				echo "$(HASH)define HAVE_IOCTLSOCKET_FIONBIO 1"; \
+				echo "$(HASH)undef  USE_WINSOCK"; \
 				echo "$(HASH)define USE_WINSOCK 1"; \
 			} >> lib/curl_config.h; \
 			;; \
