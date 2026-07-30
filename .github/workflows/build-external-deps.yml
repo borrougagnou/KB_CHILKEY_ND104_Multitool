@@ -1,0 +1,234 @@
+name: build-external-deps
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 180
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: win32-xp
+            msystem: MINGW32
+            platform_dir: Windows-x32
+            make_cmd: make
+            packages: >-
+              base-devel
+              curl
+              tar
+              perl
+              make
+              pkg-config
+              mingw-w64-i686-toolchain
+              mingw-w64-i686-cmake
+              mingw-w64-i686-pkg-config
+            artifact: external-windows-x32
+
+          - target: win64
+            msystem: MINGW64
+            platform_dir: Windows-x64
+            make_cmd: make
+            packages: >-
+              base-devel
+              curl
+              tar
+              perl
+              make
+              pkg-config
+              mingw-w64-x86_64-toolchain
+              mingw-w64-x86_64-cmake
+              mingw-w64-x86_64-pkg-config
+            artifact: external-windows-x64
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v3
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: ${{ matrix.packages }}
+
+      - name: Normalize line endings
+        run: |
+          perl -pi -e 's/\r$//' "$DEPS_SCRIPT"
+          perl -pi -e 's/\r$//' "$MAKEFILE_DEPS" || true
+          perl -pi -e 's/\r$//' MakefileFolder/*.Makefile || true
+
+      - name: Cache dependency sources
+        uses: actions/cache@v4
+        with:
+          path: src/external/source
+          key: dep-sources-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('scripts/download-deps.sh') }}
+
+      - name: Download dependency sources
+        run: |
+          bash "$DEPS_SCRIPT"
+
+      - name: Cache built external libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.EXTERNAL_ROOT }}/openssl/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/zlib/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/brotli/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/zstd/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/nghttp2/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/curl/${{ matrix.platform_dir }}
+          key: external-built-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles(env.DEPS_SCRIPT, env.MAKEFILE_DEPS, 'MakefileFolder/**') }}
+
+      - name: Show curl build configuration variables
+        run: |
+          ${{ matrix.make_cmd }} -f MakefileFolder/curl.Makefile print-vars || true
+
+      - name: Build external dependencies
+        run: |
+          set -euxo pipefail
+
+          ${{ matrix.make_cmd }} -f MakefileFolder/openssl.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/zlib.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/brotli.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/zstd.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/nghttp2.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/curl.Makefile
+
+      - name: Package built libraries
+        run: |
+          set -euxo pipefail
+
+          mkdir -p dist/stage
+
+          for lib in openssl zlib brotli zstd nghttp2 curl; do
+            if [ -d "$EXTERNAL_ROOT/$lib/${{ matrix.platform_dir }}" ]; then
+              mkdir -p "dist/stage/$EXTERNAL_ROOT/$lib"
+              cp -a "$EXTERNAL_ROOT/$lib/${{ matrix.platform_dir }}" "dist/stage/$EXTERNAL_ROOT/$lib/"
+            fi
+          done
+
+          tar -czf "dist/${{ matrix.artifact }}.tar.gz" -C dist/stage "$EXTERNAL_ROOT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}.tar.gz
+
+  unix:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux
+            platform_dir: Linux
+            make_cmd: make
+            artifact: external-linux
+
+          - os: macos-14
+            target: macos
+            platform_dir: Mac
+            make_cmd: gmake
+            artifact: external-macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install packages (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            perl \
+            make \
+            pkg-config \
+            cmake \
+            curl \
+            tar
+
+      - name: Install packages (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install \
+            make \
+            pkg-config \
+            cmake \
+            perl \
+            curl
+
+      - name: Cache dependency sources
+        uses: actions/cache@v4
+        with:
+          path: src/external/source
+          key: dep-sources-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('scripts/download-deps.sh') }}
+
+      - name: Download dependency sources
+        run: |
+          bash "$DEPS_SCRIPT"
+
+      - name: Cache built external libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.EXTERNAL_ROOT }}/openssl/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/zlib/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/brotli/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/zstd/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/nghttp2/${{ matrix.platform_dir }}
+            ${{ env.EXTERNAL_ROOT }}/curl/${{ matrix.platform_dir }}
+          key: external-built-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles(env.DEPS_SCRIPT, env.MAKEFILE_DEPS, 'MakefileFolder/**') }}
+
+      - name: Show curl build configuration variables
+        run: |
+          ${{ matrix.make_cmd }} -f MakefileFolder/curl.Makefile print-vars || true
+
+      - name: Build external dependencies
+        run: |
+          set -euxo pipefail
+
+          ${{ matrix.make_cmd }} -f MakefileFolder/openssl.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/zlib.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/brotli.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/zstd.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/nghttp2.Makefile
+          ${{ matrix.make_cmd }} -f MakefileFolder/curl.Makefile
+
+      - name: Package built libraries
+        run: |
+          set -euxo pipefail
+
+          mkdir -p dist/stage
+
+          for lib in openssl zlib brotli zstd nghttp2 curl; do
+            if [ -d "$EXTERNAL_ROOT/$lib/${{ matrix.platform_dir }}" ]; then
+              mkdir -p "dist/stage/$EXTERNAL_ROOT/$lib"
+              cp -a "$EXTERNAL_ROOT/$lib/${{ matrix.platform_dir }}" "dist/stage/$EXTERNAL_ROOT/$lib/"
+            fi
+          done
+
+          tar -czf "dist/${{ matrix.artifact }}.tar.gz" -C dist/stage "$EXTERNAL_ROOT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}.tar.gz
+
