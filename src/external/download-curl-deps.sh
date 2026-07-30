@@ -33,6 +33,7 @@ download_extract() {
 	url="$2"
 	dest="$3"
 	check="$4"
+	tar_extra="${5:-}"
 
 	if [ "${FORCE_DOWNLOAD:-0}" = "1" ]; then
 		echo "FORCE_DOWNLOAD=1, removing: $dest"
@@ -52,7 +53,12 @@ download_extract() {
 	curl -fL --retry 3 -o "$tmpfile" "$url"
 
 	echo "Extracting $name into: $dest"
-	tar -xf "$tmpfile" -C "$dest"
+
+	if [ -n "$tar_extra" ]; then
+		tar -xf "$tmpfile" -C "$dest" "$tar_extra"
+	else
+		tar -xf "$tmpfile" -C "$dest"
+	fi
 
 	rm -f "$tmpfile"
 
@@ -97,7 +103,8 @@ download_extract \
 	"zstd" \
 	"https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz" \
 	"${SOURCE_ROOT}/zstd-extracted" \
-	"zstd-${ZSTD_VERSION}/lib/zstd.h"
+	"zstd-${ZSTD_VERSION}/lib/zstd.h" \
+        "--exclude=*/tests"
 
 download_extract \
 	"nghttp2" \
