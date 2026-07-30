@@ -490,10 +490,11 @@ compile: check-deps check-source
 				echo "$(HASH)undef  USE_WINSOCK"; \
 				echo "$(HASH)define USE_WINSOCK 1"; \
 			} >> lib/curl_config.h; \
+			/* Append -lnghttp2 to the existing curl_LDADD and LIBS */ \
+			perl -pi -e 's/^(curl_LDADD\s*=\s*)(.*)/$$1$$2 -lnghttp2/' src/Makefile; \
+			perl -pi -e 's/^(LIBS\s*=\s*)(.*)/$$1$$2 -lnghttp2/' src/Makefile; \
 			;; \
 	esac && \
-	perl -pi -e 's/^LIBS\s*=\s*(.*)/LIBS = $1 -lnghttp2/' src/Makefile && \
-	perl -pi -e 's/^curl_LDADD\s*=\s*(.*)/curl_LDADD = $1 -lnghttp2/' src/Makefile && \
 	$(MAKE) -j$(JOBS)
 
 install: compile
