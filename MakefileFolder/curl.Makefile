@@ -45,26 +45,6 @@ UNAME_S :=
 UNAME_M :=
 PLATFORM_DIR :=
 
-ifeq ($(OS),Windows_NT)
-JOBS ?= $(NUMBER_OF_PROCESSORS)
-
-ifeq ($(MSYSTEM),MINGW32)
-PLATFORM_DIR := Windows-x32
-else ifeq ($(MSYSTEM),MINGW64)
-PLATFORM_DIR := Windows-x64
-else ifeq ($(MSYSTEM),UCRT64)
-PLATFORM_DIR := Windows-x64
-else ifeq ($(MSYSTEM),CLANG64)
-PLATFORM_DIR := Windows-x64
-else ifdef PROCESSOR_ARCHITECTURE
-ifeq ($(PROCESSOR_ARCHITECTURE),x86)
-PLATFORM_DIR := Windows-x32
-else
-PLATFORM_DIR := Windows-x64
-endif
-endif
-
-else
 UNAME_S := $(shell uname -s 2>/dev/null)
 UNAME_M := $(shell uname -m 2>/dev/null)
 
@@ -79,14 +59,13 @@ PLATFORM_DIR := Linux
 else ifeq ($(UNAME_S),Darwin)
 PLATFORM_DIR := Mac
 endif
-endif
 
 ifeq ($(JOBS),)
 JOBS := 4
 endif
 
 ifndef PLATFORM_DIR
-$(error Cannot detect platform. Use Windows MSYS2 MINGW32/MINGW64, Linux, or macOS.)
+$(error Cannot detect platform. Use Linux, or macOS (Windows is build apart).)
 endif
 
 # ==================================================================
@@ -140,59 +119,6 @@ PLATFORM_LIBS :=
 
 CURL_HOST :=
 CURL_EXTRA_CONFIG :=
-
-ifeq ($(PLATFORM_DIR),Windows-x32)
-PLATFORM_CPPFLAGS += -m32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN
-PLATFORM_LDFLAGS  += -m32 -static -static-libgcc -static-libstdc++ \
-	-Wl,--major-os-version,5 \
-	-Wl,--minor-os-version,1 \
-	-Wl,--major-subsystem-version,5 \
-	-Wl,--minor-subsystem-version,1
-
-PLATFORM_LIBS += -lws2_32 -lcrypt32 -lgdi32 -ladvapi32 -luser32
-
-CURL_HOST := --host=i686-w64-mingw32
-CURL_BUILD := --build=i686-w64-mingw32
-CURL_EXTRA_CONFIG += --disable-threaded-resolver
-
-CURL_CONF_CACHE := \
-ac_cv_header_windows_h=yes \
-ac_cv_header_winsock2_h=yes \
-ac_cv_func_ioctlsocket=yes \
-ac_cv_func_connect=yes \
-ac_cv_func_socket=yes \
-ac_cv_func_select=yes \
-ac_cv_func_recv=yes \
-ac_cv_func_send=yes \
-ac_cv_func_getpeername=yes \
-ac_cv_func_getsockname=yes
-endif
-
-ifeq ($(PLATFORM_DIR),Windows-x64)
-PLATFORM_CPPFLAGS += -m64 -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -DWIN32_LEAN_AND_MEAN
-PLATFORM_LDFLAGS += -m64 -static -static-libgcc -static-libstdc++ \
-	-Wl,--major-os-version,6 \
-	-Wl,--minor-os-version,1 \
-	-Wl,--major-subsystem-version,6 \
-	-Wl,--minor-subsystem-version,1
-
-PLATFORM_LIBS += -lws2_32 -lcrypt32 -lgdi32 -ladvapi32 -luser32
-
-CURL_HOST := --host=x86_64-w64-mingw32
-CURL_BUILD := --build=x86_64-w64-mingw32
-
-CURL_CONF_CACHE := \
-ac_cv_header_windows_h=yes \
-ac_cv_header_winsock2_h=yes \
-ac_cv_func_ioctlsocket=yes \
-ac_cv_func_connect=yes \
-ac_cv_func_socket=yes \
-ac_cv_func_select=yes \
-ac_cv_func_recv=yes \
-ac_cv_func_send=yes \
-ac_cv_func_getpeername=yes \
-ac_cv_func_getsockname=yes
-endif
 
 ifeq ($(PLATFORM_DIR),Linux)
 PLATFORM_CPPFLAGS += -fPIC
