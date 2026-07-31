@@ -171,7 +171,7 @@ ac_cv_func_getsockname=yes
 endif
 
 ifeq ($(PLATFORM_DIR),Windows-x64)
-PLATFORM_CPPFLAGS += -m64 -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -DWIN32_LEAN_AND_MEAN
+PLATFORM_CPPFLAGS += -DNGHTTP2_STATICLIB -m64 -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -DWIN32_LEAN_AND_MEAN
 PLATFORM_LDFLAGS += -m64 -static -static-libgcc -static-libstdc++ \
 	-Wl,--major-os-version,6 \
 	-Wl,--minor-os-version,1 \
@@ -447,7 +447,7 @@ compile: check-deps check-source
 	CFLAGS="$(CURL_CFLAGS)" \
 	LDFLAGS="$(CURL_LDFLAGS)" \
 	LIBS="$(CURL_LIBS)" \
-	CPPFLAGS="-DNGHTTP2_STATICLIB" $(CURL_CONF_CACHE) ./configure \
+	$(CURL_CONF_CACHE) ./configure \
 		$(CURL_HOST) \
 		$(CURL_BUILD) \
 		--prefix="$(INSTALL_DIR)" \
