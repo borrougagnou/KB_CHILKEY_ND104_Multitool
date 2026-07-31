@@ -144,7 +144,7 @@ CURL_HOST :=
 CURL_EXTRA_CONFIG :=
 
 ifeq ($(PLATFORM_DIR),Windows-x32)
-PLATFORM_CPPFLAGS += -m32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN
+PLATFORM_CPPFLAGS += -DNGHTTP2_STATICLIB -m32 -D_WIN32_WINNT=0x0501 -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN
 PLATFORM_LDFLAGS  += -m32 -static -static-libgcc -static-libstdc++ \
 	-Wl,--major-os-version,5 \
 	-Wl,--minor-os-version,1 \
@@ -447,7 +447,7 @@ compile: check-deps check-source
 	CFLAGS="$(CURL_CFLAGS)" \
 	LDFLAGS="$(CURL_LDFLAGS)" \
 	LIBS="$(CURL_LIBS)" \
-	$(CURL_CONF_CACHE) ./configure \
+	CPPFLAGS="-DNGHTTP2_STATICLIB" $(CURL_CONF_CACHE) ./configure \
 		$(CURL_HOST) \
 		$(CURL_BUILD) \
 		--prefix="$(INSTALL_DIR)" \
@@ -490,9 +490,6 @@ compile: check-deps check-source
 				echo "$(HASH)undef  USE_WINSOCK"; \
 				echo "$(HASH)define USE_WINSOCK 1"; \
 			} >> lib/curl_config.h; \
-			/* Append -lnghttp2 to the existing curl_LDADD and LIBS */ \
-			perl -pi -e 's/^(curl_LDADD\s*=\s*)(.*)/$$1$$2 -lnghttp2/' src/Makefile; \
-			perl -pi -e 's/^(LIBS\s*=\s*)(.*)/$$1$$2 -lnghttp2/' src/Makefile; \
 			;; \
 	esac && \
 	$(MAKE) -j$(JOBS)
