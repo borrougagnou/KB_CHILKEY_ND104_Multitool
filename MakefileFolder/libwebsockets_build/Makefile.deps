@@ -71,7 +71,9 @@ CMAKE_FLAGS := -DCMAKE_INSTALL_PREFIX=$(INSTALL_DIR) \
 
 # Windows XP SP3 Support Flag
 ifeq ($(OS_NAME),Windows)
-    CMAKE_FLAGS += -DCMAKE_C_FLAGS="-D_WIN32_WINNT=0x0501" \
+	  # Force include poll.h to provide struct pollfd for Windows XP (MinGW)
+    # because winsock2.h only defines it for _WIN32_WINNT >= 0x0600 (Vista)
+    CMAKE_FLAGS += -DCMAKE_C_FLAGS="  -D_WIN32_WINNT=0x0501" \
                    -DCMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x0501"
 endif
 
@@ -86,32 +88,72 @@ zlib:
 	@if [ ! -d "$(SRC_DIR)/zlib-src" ]; then \
 		git clone --depth 1 --branch v1.3.1 https://github.com/madler/zlib.git $(SRC_DIR)/zlib-src; \
 	fi
-	cmake -S $(SRC_DIR)/zlib-src -B $(BUILD_DIR)/zlib-build $(CMAKE_FLAGS)
+	cmake -S $(SRC_DIR)/zlib-src -B $(BUILD_DIR)/zlib-build \
+		$(CMAKE_FLAGS) \
+		-DSKIP_INSTALL_SHARED_LIB=ON
 	cmake --build $(BUILD_DIR)/zlib-build --target install
 
 mbedtls:
 	@if [ ! -d "$(SRC_DIR)/mbedtls-src" ]; then \
 		git clone --depth 1 --branch v2.28.8 https://github.com/Mbed-TLS/mbedtls.git $(SRC_DIR)/mbedtls-src; \
 	fi
-	cmake -S $(SRC_DIR)/mbedtls-src -B $(BUILD_DIR)/mbedtls-build $(CMAKE_FLAGS) -DENABLE_TESTING=OFF -DENABLE_PROGRAMS=OFF
+	cmake -S $(SRC_DIR)/mbedtls-src -B $(BUILD_DIR)/mbedtls-build \
+		$(CMAKE_FLAGS) \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+		-DENABLE_PROGRAMS=OFF \
+		-DENABLE_TESTING=OFF
 	cmake --build $(BUILD_DIR)/mbedtls-build --target install
 
 nghttp2:
 	@if [ ! -d "$(SRC_DIR)/nghttp2-src" ]; then \
 		git clone --depth 1 --branch v1.62.1 https://github.com/nghttp2/nghttp2.git $(SRC_DIR)/nghttp2-src; \
 	fi
-	cmake -S $(SRC_DIR)/nghttp2-src -B $(BUILD_DIR)/nghttp2-build $(CMAKE_FLAGS) -DENABLE_LIB_ONLY=ON -DENABLE_STATIC_LIB=ON
+	cmake -S $(SRC_DIR)/nghttp2-src -B $(BUILD_DIR)/nghttp2-build \
+		$(CMAKE_FLAGS) \
+		-DENABLE_LIB_ONLY=ON \
+		-DBUILD_STATIC_LIBS=ON \
+		-DENABLE_DOC=OFF \
+		-DBUILD_TESTING=OFF \
+		-DENABLE_FAILMALLOC=OFF \
+		-DWITH_OPENSSL=OFF \
+		-DWITH_LIBNGTCP2=OFF \
+		-DWITH_LIBNGHTTP3=OFF
 	cmake --build $(BUILD_DIR)/nghttp2-build --target install
 
 libwebsockets: zlib mbedtls nghttp2
 	@if [ ! -d "$(SRC_DIR)/lws-src" ]; then \
-		git clone --depth 1 --branch v4.3.3 https://github.com/warmcat/libwebsockets.git $(SRC_DIR)/lws-src; \
+		git clone --depth 1 --branch v4.1.0 https://github.com/warmcat/libwebsockets.git $(SRC_DIR)/lws-src; \
 	fi
-	cmake -S $(SRC_DIR)/lws-src -B $(BUILD_DIR)/lws-build $(CMAKE_FLAGS) \
-		-DLWS_WITH_SSL=ON -DLWS_WITH_MBEDTLS=ON \
-		-DLWS_WITH_ZLIB=ON -DLWS_WITH_HTTP2=ON \
-		-DLWS_WITH_STATIC=ON -DLWS_WITH_SHARED=OFF \
-		-DCMAKE_PREFIX_PATH=$(INSTALL_DIR)
+	# Patch hardcoded Windows 7 (0x0601) target to Windows XP (0x0501)
+	@sed -i.bak 's/0x0601/0x0501/g' $(SRC_DIR)/lws-src/CMakeLists.txt
+
+  # HWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+	@tree ../..
+  # HWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+
+	cmake -S $(SRC_DIR)/lws-src -B $(BUILD_DIR)/lws-build \
+		$(CMAKE_FLAGS) \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+		-DCMAKE_PREFIX_PATH=$(INSTALL_DIR) \
+		-DDISABLE_WERROR=ON \
+		-DLWS_WITH_SSL=ON \
+		-DLWS_WITH_MBEDTLS=ON \
+		-DLWS_MBEDTLS_INCLUDE_DIRS="$(INSTALL_DIR)/include" \
+		-DLWS_MBEDTLS_LIBRARIES="$(INSTALL_DIR)/lib/libmbedtls.a;$(INSTALL_DIR)/lib/libmbedx509.a;$(INSTALL_DIR)/lib/libmbedcrypto.a" \
+		-DLWS_WITH_ZLIB=ON \
+		-DLWS_WITH_BUNDLED_ZLIB=OFF \
+		-DLWS_ZLIB_INCLUDE_DIRS="$(INSTALL_DIR)/include" \
+		-DLWS_ZLIB_LIBRARIES="$(INSTALL_DIR)/lib/libzlibstatic.a" \
+		-DLWS_WITH_HTTP2=ON \
+		-DLWS_WITH_STATIC=ON \
+		-DLWS_WITH_SHARED=OFF \
+		-DLWS_WITHOUT_EXTENSIONS=OFF \
+		-DLWS_WITHOUT_TESTAPPS=ON \
+		-DLWS_WITHOUT_TEST_SERVER=ON \
+		-DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON \
+		-DLWS_WITHOUT_TEST_PING=ON \
+		-DLWS_WITHOUT_TEST_CLIENT=ON \
+		-DLWS_WITH_MINIMAL_EXAMPLES=OFF
 	cmake --build $(BUILD_DIR)/lws-build --target install
 
 

@@ -74,6 +74,7 @@ ExternalProject_Add(zlib
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
         -DBUILD_SHARED_LIBS=OFF
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 )
 
 # 2. Build mbedTLS
@@ -104,6 +105,7 @@ ExternalProject_Add(nghttp2
         -DBUILD_SHARED_LIBS=OFF
         -DENABLE_LIB_ONLY=ON
         -DENABLE_STATIC_LIB=ON
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     DEPENDS mbedtls
 )
 

@@ -6,7 +6,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  EXTERNAL_ROOT_REL: ${EXTERNAL_ROOT_REL}
+  EXTERNAL_ROOT_REL: src/external
   MAKEFILE_DEPS:     Makefile.deps
 
 jobs:
@@ -37,6 +37,7 @@ jobs:
           update: true
           install: >-
             git
+            tree
             make
             mingw-w64-${{ matrix.msystem == 'mingw32' && 'i686' || 'x86_64' }}-gcc
             mingw-w64-${{ matrix.msystem == 'mingw32' && 'i686' || 'x86_64' }}-cmake
@@ -47,7 +48,7 @@ jobs:
           cd MakefileFolder/libwebsockets_build
           make -f Makefile.deps all
           cd ../..
-          tar -czf libwebsockets-${{ matrix.name }}.tar.gz ${EXTERNAL_ROOT_REL}/libwebsockets/
+          tar -czf libwebsockets-${{ matrix.name }}.tar.gz $EXTERNAL_ROOT_REL/libwebsockets/
 
       - name: Build & Install (Windows)
         if: runner.os == 'Windows'
@@ -56,7 +57,7 @@ jobs:
           cd MakefileFolder/libwebsockets_build
           make -f Makefile.deps all ARCH=${{ matrix.arch }}
           cd ../..
-          tar -czf libwebsockets-${{ matrix.name }}.tar.gz ${EXTERNAL_ROOT_REL}/libwebsockets/
+          tar -czf libwebsockets-${{ matrix.name }}.tar.gz $EXTERNAL_ROOT_REL/libwebsockets/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
