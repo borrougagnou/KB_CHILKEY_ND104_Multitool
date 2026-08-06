@@ -88,6 +88,7 @@ ExternalProject_Add(mbedtls
         -DBUILD_SHARED_LIBS=OFF
         -DENABLE_TESTING=OFF
         -DENABLE_PROGRAMS=OFF
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     DEPENDS zlib
 )
 
