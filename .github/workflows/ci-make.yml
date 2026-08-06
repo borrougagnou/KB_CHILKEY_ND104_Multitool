@@ -2,7 +2,7 @@ name: Makefile Cross-Platform Test
 
 on:
   push:
-  pull_request:
+    branches: [ "master" ]
 
 env:
   PROGRAMS: "clock_update"
