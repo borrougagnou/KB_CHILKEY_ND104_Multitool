@@ -4,6 +4,7 @@ include MakefileFolder/hidapi.mk
 
 # UNIT_TEST
 include MakefileFolder/test_json.mk
+include MakefileFolder/test_libwebsockets.mk
 
 
 #PROGRAM
