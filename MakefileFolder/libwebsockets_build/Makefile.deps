@@ -57,8 +57,20 @@ ifeq ($(OS_NAME),Windows)
         ARCH ?= x64
     endif
     OS_FOLDER := Windows-$(ARCH)
+    WINDOWS_BUILD := 1
 else
     OS_FOLDER := $(OS_NAME)
+    WINDOWS_BUILD := 0
+endif
+
+### MINGW detection
+MINGW_BUILD := 0
+ifneq (,$(findstring MINGW,$(UNAME_S)))
+    MINGW_BUILD := 1
+else ifneq (,$(findstring MSYS,$(UNAME_S)))
+    MINGW_BUILD := 1
+else ifneq (,$(findstring UCRT,$(UNAME_S)))
+    MINGW_BUILD := 1
 endif
 
 # Final clean install destination
@@ -97,6 +109,13 @@ mbedtls:
 	@if [ ! -d "$(SRC_DIR)/mbedtls-src" ]; then \
 		git clone --depth 1 --branch v2.28.9 https://github.com/Mbed-TLS/mbedtls.git $(SRC_DIR)/mbedtls-src; \
 	fi
+
+	# Patch Windows MinGW: prevent Mbed TLS from importing _vsnprintf_s from msvcrt.dll
+	cmake \
+		-DMBEDTLS_MINGW_BUILD=$(MINGW_BUILD) \
+		-DMBEDTLS_SOURCE_DIR="$(SRC_DIR)/mbedtls-src" \
+		-P "$(ROOT_DIR)/src/external/patches/patch_mbedtls_windows_xp.cmake"
+
 	cmake -S $(SRC_DIR)/mbedtls-src -B $(BUILD_DIR)/mbedtls-build \
 		$(CMAKE_FLAGS) \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -124,8 +143,40 @@ libwebsockets: zlib mbedtls nghttp2
 	@if [ ! -d "$(SRC_DIR)/lws-src" ]; then \
 		git clone --depth 1 --branch v4.1.6 https://github.com/warmcat/libwebsockets.git $(SRC_DIR)/lws-src; \
 	fi
+
 	# Patch hardcoded Windows 7 (0x0601) target to Windows XP (0x0501)
-	@sed -i.bak 's/0x0601/0x0501/g' $(SRC_DIR)/lws-src/CMakeLists.txt
+	cmake \
+		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
+		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_windows_xp.cmake"
+
+	# Patch the v4.1 mbedTLS ALPN bug + no follow redirect
+	cmake \
+		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets.cmake"
+
+	### Backports Winsock send()/recv() and WSAEWOULDBLOCK handling so
+	### non-blocking TLS connections work correctly instead of failing.
+	cmake \
+		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
+		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_windows_mbedtls.cmake"
+
+	# Debug Patch for LibWebSocket about the redirection (should be skipped when PROD !!!)
+	# ADD FLAG `-DLWS_DEBUG_REDIRECT_PATCH=ON` to enable the debug flag
+	cmake \
+		-DLWS_DEBUG_REDIRECT_PATCH=OFF \
+		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
+		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_DEBUG_redirect.cmake"
+
+	### Optional DEBUG patch: display the real native mbedTLS handshake error.
+	# ADD FLAG `-DLWS_DEBUG_MBEDTLS_PATCH=ON` to enable the debug flag
+	cmake \
+		-DLWS_DEBUG_MBEDTLS_PATCH=OFF \
+		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
+		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_DEBUG_mbedtls.cmake"
 
   # HWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 	@tree ../..
@@ -140,6 +191,8 @@ libwebsockets: zlib mbedtls nghttp2
 		-DLWS_WITH_MBEDTLS=ON \
 		-DLWS_MBEDTLS_INCLUDE_DIRS="$(INSTALL_DIR)/include" \
 		-DLWS_MBEDTLS_LIBRARIES="$(INSTALL_DIR)/lib/libmbedtls.a;$(INSTALL_DIR)/lib/libmbedx509.a;$(INSTALL_DIR)/lib/libmbedcrypto.a" \
+		-DLWS_HAVE_mbedtls_ssl_conf_alpn_protocols=ON \
+		-DLWS_HAVE_mbedtls_ssl_get_alpn_protocol=ON \
 		-DLWS_WITH_ZLIB=ON \
 		-DLWS_WITH_BUNDLED_ZLIB=OFF \
 		-DLWS_ZLIB_INCLUDE_DIRS="$(INSTALL_DIR)/include" \

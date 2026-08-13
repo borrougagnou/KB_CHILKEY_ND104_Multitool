@@ -55,8 +55,16 @@ endif()
 
 set(INSTALL_DIR "${ROOT_DIR}/src/external/libwebsockets/${OS_FOLDER}")
 
+### Windows XP SP3 Support Flag
+set(EXTRA_C_FLAGS "")
+if(WIN32 AND MINGW)
+    set(EXTRA_C_FLAGS "-D_WIN32_WINNT=0x0501")
+endif()
+
+
 # DEBUG patches (if enabled)
-option(LWS_DEBUG_REDIRECT_PATCH "Apply the libwebsockets DEBUG redirect patch" OFF)
+option(LWS_DEBUG_REDIRECT_PATCH "Apply the libwebsockets DEBUG redirect patch"      OFF)
+option(LWS_DEBUG_MBEDTLS_PATCH  "Apply the libwebsockets DEBUG mbedTLS error patch" OFF)
 
 
 # CMake Flags
@@ -64,6 +72,7 @@ set(COMMON_CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
     -DBUILD_SHARED_LIBS=OFF
     -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_C_FLAGS=${EXTRA_C_FLAGS}
 )
 
 
@@ -88,6 +97,15 @@ ExternalProject_Add(mbedtls
     GIT_SHALLOW TRUE
     SOURCE_DIR ${SRC_DIR}/mbedtls
     BINARY_DIR ${BUILD_DIR}/mbedtls
+
+    # Windows XP / MinGW:
+    # prevent Mbed TLS from importing _vsnprintf_s from msvcrt.dll
+    PATCH_COMMAND
+        ${CMAKE_COMMAND}
+            -DMBEDTLS_MINGW_BUILD=${MINGW}
+            -DMBEDTLS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_mbedtls_windows_xp.cmake"
+
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -103,6 +121,7 @@ ExternalProject_Add(nghttp2
     GIT_SHALLOW TRUE
     SOURCE_DIR ${SRC_DIR}/nghttp2
     BINARY_DIR ${BUILD_DIR}/nghttp2
+
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
         -DENABLE_LIB_ONLY=ON
@@ -124,6 +143,44 @@ ExternalProject_Add(libwebsockets
     SOURCE_DIR ${SRC_DIR}/lws
     BINARY_DIR ${BUILD_DIR}/lws
 
+    ### Patch hardcoded Windows 7 (0x0601) target to Windows XP (0x0501)
+    PATCH_COMMAND
+        ${CMAKE_COMMAND}
+            -DLWS_WINDOWS_BUILD=${WIN32}
+            -DLWS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_windows_xp.cmake"
+
+        # Patch the v4.1 mbedTLS ALPN bug + no follow redirect
+        COMMAND
+        ${CMAKE_COMMAND}
+            -DLWS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets.cmake"
+
+        ### Backports Winsock send()/recv() and WSAEWOULDBLOCK handling so
+        ### non-blocking TLS connections work correctly instead of failing.
+        COMMAND
+        ${CMAKE_COMMAND}
+          -DLWS_WINDOWS_BUILD=${WIN32}
+          -DLWS_SOURCE_DIR=<SOURCE_DIR>
+          -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_windows_mbedtls.cmake"
+
+        # Optional DEBUG redirect patch
+        # WARNING ! FLAG `LWS_DEBUG_REDIRECT_PATCH` SHOULD BE ON !!
+        COMMAND
+        ${CMAKE_COMMAND}
+            -DLWS_DEBUG_REDIRECT_PATCH=${LWS_DEBUG_REDIRECT_PATCH}
+            -DLWS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_DEBUG_redirect.cmake"
+
+        ### Optional DEBUG patch: display the real native mbedTLS handshake error.
+        ### Temporary diagnostic patch; remove or disable it after fixing the TLS problem.
+        COMMAND
+        ${CMAKE_COMMAND}
+            -DLWS_DEBUG_MBEDTLS_PATCH=${LWS_DEBUG_MBEDTLS_PATCH}
+            -DLWS_WINDOWS_BUILD=${WIN32}
+            -DLWS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_DEBUG_mbedtls.cmake"
+
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -134,6 +191,8 @@ ExternalProject_Add(libwebsockets
         -DLWS_WITH_MBEDTLS=ON
         -DLWS_MBEDTLS_INCLUDE_DIRS=${INSTALL_DIR}/include
         -DLWS_MBEDTLS_LIBRARIES=${INSTALL_DIR}/lib/libmbedtls.a;${INSTALL_DIR}/lib/libmbedx509.a;${INSTALL_DIR}/lib/libmbedcrypto.a
+        -DLWS_HAVE_mbedtls_ssl_conf_alpn_protocols=ON
+        -DLWS_HAVE_mbedtls_ssl_get_alpn_protocol=ON
         ### zlib
         -DLWS_WITH_ZLIB=ON
         -DLWS_WITH_BUNDLED_ZLIB=OFF
