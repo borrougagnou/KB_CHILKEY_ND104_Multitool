@@ -1,0 +1,86 @@
+name: Windows Build Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  PROGRAMS: "clock_update"
+  #PROGRAMS: "clock_update weather_update picture_upload"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  windows-mingw:
+    # https://github.com/actions/runner-images
+    strategy:
+      matrix:
+        include:
+          - os:      windows-2022
+            msystem: mingw32
+            name:    windows-x32-xp
+            arch:    "x32"
+
+          - os:      windows-2022
+            msystem: mingw64
+            name:    windows-x64
+            arch:    "x64"
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Build
+    - name: Configure CMake
+      run: cmake -S . -B cmake-build
+
+    - name: Build
+      run: |
+        foreach ($program in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+          Write-Host "Building $program..."
+          cmake --build cmake-build --config Release --target $program
+
+          $exe = "cmake-build\${program}.exe"
+          if (-not (Test-Path $exe -PathType Leaf)) {
+            Write-Error "Executable not found: $exe"
+            Write-Host "Contents of cmake-build:"
+            Get-ChildItem -Recurse cmake-build
+            exit 1
+          }
+
+          Write-Host "Successfully built: $exe"
+        }
+
+    - name: Run executable
+      run: |
+        foreach ($exe in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+          if (Test-Path ".\cmake-build\${exe}.exe") {
+            Write-Host "Running ${exe}"
+            & ".\cmake-build\${exe}.exe"
+            exit 0
+          }
+          else {
+            Write-Host "Executable not found: ${src}"
+            Write-Host "Contents of cmake-build:"
+            Get-ChildItem -Recurse .\cmake-build
+          }
+        }
+        exit 1
+
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: CHILKEY_ND104_Multitool-CMAKE-${{ matrix.name }}
+        path: |
+          cmake-build/clock_update.exe
+          clock_update.exe
+          #cmake-build/weather_update.exe
+          #weather_update.exe
+          #cmake-build/picture_upload.exe
+          #picture_upload.exe
+
