@@ -1,6 +1,6 @@
 #include "include/weather_update.hh"
 
-#include "../external/hidapi/hidapi.h"
+#include <hidapi.h>
 
 #include <iostream>
 
