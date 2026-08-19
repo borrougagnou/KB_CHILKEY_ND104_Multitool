@@ -33,7 +33,7 @@ $(CLOCK_BUILD)/%.o: src/clock/%.cpp
 # Build the final executable with all object
 clock_update: $(CLOCK_OBJ)
 ifeq ($(PLATFORM),WINDOWS)
-	$(CXX) $^ -o $@.exe -lhid
+	$(CXX) $(WINDOWS_STATIC_LDFLAGS) $^ -o $@.exe -lhid
 else ifeq ($(PLATFORM),MAC)
 	$(CXX) $^ -o $@ -framework IOKit -framework CoreFoundation
 else

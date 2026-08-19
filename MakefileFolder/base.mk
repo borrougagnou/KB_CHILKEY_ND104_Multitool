@@ -12,6 +12,8 @@ CXXFLAGS += -std=c++11 -Wextra -Wall -Werror
 ifeq ($(OS),Windows_NT)
 	PLATFORM = WINDOWS
 	OBJ += $(OBJ_WIN)
+
+	WINDOWS_STATIC_LDFLAGS = -static -static-libgcc -static-libstdc++
 else
 	UNAME_S := $(shell uname -s)
 

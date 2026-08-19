@@ -40,7 +40,7 @@ $(WEATHER_BUILD)/%.o: src/weather/%.cpp
 # Build the final executable with all object
 weather_update: $(WEATHER_OBJ)
 ifeq ($(PLATFORM),WINDOWS)
-	$(CXX) $^ -o $@.exe -lhid
+	$(CXX) $(WINDOWS_STATIC_LDFLAGS) $^ -o $@.exe -lhid
 else ifeq ($(PLATFORM),MAC)
 	$(CXX) $^ -o $@ -framework IOKit -framework CoreFoundation
 else
