@@ -1,0 +1,11 @@
+prefix="/home/runner/work/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Linux"
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libwebsockets
+Description: Websockets server and client library
+Version: 4.1.6-v4.1.6
+
+Libs: -L${libdir} -lwebsockets
+Cflags: -I${includedir}
