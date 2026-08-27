@@ -25,7 +25,7 @@ $(eval $(call BUILD_HID,$(CLOCK_BUILD),$(HID_CPPFLAGS_CLOCK)))
 
 
 # Create objects from C++ sources
-$(CLOCK_BUILD)/%.o: src/%.cpp
+$(CLOCK_BUILD)/%.o: src/clock/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) -c $< $(CPPFLAGS_CLOCK) $(CXXFLAGS) -o $@
 

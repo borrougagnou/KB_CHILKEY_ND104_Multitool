@@ -56,8 +56,8 @@ endif()
 
 # Clock Program
 add_executable(clock_update
-	src/main_clock.cpp
-	src/clock_update.cpp
+	src/clock/main_clock.cpp
+	src/clock/clock_update.cpp
 )
 
 target_link_libraries(clock_update
@@ -66,8 +66,8 @@ target_link_libraries(clock_update
 
 ## Weather Program
 #add_executable(weather_update
-#	src/main_weather.cpp
-#	src/weather_update.cpp
+#	src/weather/main_weather.cpp
+#	src/weather/weather_update.cpp
 #)
 #
 #target_link_libraries(weather_update
@@ -76,8 +76,8 @@ target_link_libraries(clock_update
 
 ## Picture Program
 #add_executable(picture_upload
-#	src/main_pictureupload.cpp
-#	src/picture_upload.cpp
+#	src/weather/main_pictureupload.cpp
+#	src/weather/picture_upload.cpp
 #)
 #
 #target_link_libraries(picture_upload

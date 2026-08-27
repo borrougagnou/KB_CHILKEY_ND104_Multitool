@@ -39,7 +39,7 @@ enum clock_offset : std::size_t
 
    We need to creates a 16-bit value from the packet content so the device
    can detect whether the packet was damaged or incorrectly constructed.
-  
+
    This implements CRC-16/CCITT-FALSE:
    - initial value: 0xffff
    - polynomial:    0x1021
@@ -52,7 +52,7 @@ std::uint16_t calculate_crc16_ccitt(const unsigned char* data, std::size_t size)
     std::uint8_t  bit_index;
     std::uint16_t current_byte;
     std::uint16_t shifted_byte;
-    bool          msb_is_set; // Most Significant Bit 
+    bool          msb_is_set; // Most Significant Bit
 
     crc = crc_initial_value;
 
@@ -193,9 +193,9 @@ bool update_clock(hid_device* handle)
     // Isolate the low byte of the CRC and store it in the payload
     payload[clock_crc_low] = static_cast<std::uint8_t>(crc & 0xff);
 
- 
+
     /*
-       /!\ HIDAPI reserves byte 0 for the report ID. 
+       /!\ HIDAPI reserves byte 0 for the report ID.
        The device payload starts at hid_report[1].
        The remaining bytes stay zero.
     */
