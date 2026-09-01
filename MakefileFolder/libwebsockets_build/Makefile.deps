@@ -141,7 +141,7 @@ nghttp2:
 
 libwebsockets: zlib mbedtls nghttp2
 	@if [ ! -d "$(SRC_DIR)/lws-src" ]; then \
-		git clone --depth 1 --branch v4.1.6 https://github.com/warmcat/libwebsockets.git $(SRC_DIR)/lws-src; \
+		git clone --depth 1 --branch v4.3.10 https://github.com/warmcat/libwebsockets.git $(SRC_DIR)/lws-src; \
 	fi
 
 	# Patch hardcoded Windows 7 (0x0601) target to Windows XP (0x0501)
@@ -150,33 +150,21 @@ libwebsockets: zlib mbedtls nghttp2
 		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
 		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_windows_xp.cmake"
 
-	# Patch the v4.1 mbedTLS ALPN bug + no follow redirect
-	cmake \
-		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
-		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets.cmake"
-
-	### Backports Winsock send()/recv() and WSAEWOULDBLOCK handling so
-	### non-blocking TLS connections work correctly instead of failing.
+	# Patch the v4.3 for Windows XP Compatibility
 	cmake \
 		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
 		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
-		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_windows_mbedtls.cmake"
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_windows_xp_source_compatibility.cmake"
 
-	# Debug Patch for LibWebSocket about the redirection (should be skipped when PROD !!!)
-	# ADD FLAG `-DLWS_DEBUG_REDIRECT_PATCH=ON` to enable the debug flag
+	# Patch the v4.3 authority bug (all OS)
 	cmake \
-		-DLWS_DEBUG_REDIRECT_PATCH=OFF \
-		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
 		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
-		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_DEBUG_redirect.cmake"
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_http2_authority.cmake"
 
-	### Optional DEBUG patch: display the real native mbedTLS handshake error.
-	# ADD FLAG `-DLWS_DEBUG_MBEDTLS_PATCH=ON` to enable the debug flag
+	# Patch the v4.3 about the relative redirect URL (all OS)
 	cmake \
-		-DLWS_DEBUG_MBEDTLS_PATCH=OFF \
-		-DLWS_WINDOWS_BUILD=$(WINDOWS_BUILD) \
 		-DLWS_SOURCE_DIR="$(SRC_DIR)/lws-src" \
-		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_DEBUG_mbedtls.cmake"
+		-P "$(ROOT_DIR)/src/external/patches/patch_libwebsockets_relative_redirect.cmake"
 
   # HWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 	@tree ../..

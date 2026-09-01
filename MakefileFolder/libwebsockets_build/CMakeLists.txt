@@ -138,7 +138,7 @@ ExternalProject_Add(nghttp2
 # 4. Build libwebsockets
 ExternalProject_Add(libwebsockets
     GIT_REPOSITORY https://github.com/warmcat/libwebsockets.git
-    GIT_TAG v4.1.6
+    GIT_TAG v4.3.10
     GIT_SHALLOW TRUE
     SOURCE_DIR ${SRC_DIR}/lws
     BINARY_DIR ${BUILD_DIR}/lws
@@ -150,36 +150,25 @@ ExternalProject_Add(libwebsockets
             -DLWS_SOURCE_DIR=<SOURCE_DIR>
             -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_windows_xp.cmake"
 
-        # Patch the v4.1 mbedTLS ALPN bug + no follow redirect
+        # Patch the v4.3 for XP Compatibility
         COMMAND
         ${CMAKE_COMMAND}
-            -DLWS_SOURCE_DIR=<SOURCE_DIR>
-            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets.cmake"
-
-        ### Backports Winsock send()/recv() and WSAEWOULDBLOCK handling so
-        ### non-blocking TLS connections work correctly instead of failing.
-        COMMAND
-        ${CMAKE_COMMAND}
-          -DLWS_WINDOWS_BUILD=${WIN32}
-          -DLWS_SOURCE_DIR=<SOURCE_DIR>
-          -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_windows_mbedtls.cmake"
-
-        # Optional DEBUG redirect patch
-        # WARNING ! FLAG `LWS_DEBUG_REDIRECT_PATCH` SHOULD BE ON !!
-        COMMAND
-        ${CMAKE_COMMAND}
-            -DLWS_DEBUG_REDIRECT_PATCH=${LWS_DEBUG_REDIRECT_PATCH}
-            -DLWS_SOURCE_DIR=<SOURCE_DIR>
-            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_DEBUG_redirect.cmake"
-
-        ### Optional DEBUG patch: display the real native mbedTLS handshake error.
-        ### Temporary diagnostic patch; remove or disable it after fixing the TLS problem.
-        COMMAND
-        ${CMAKE_COMMAND}
-            -DLWS_DEBUG_MBEDTLS_PATCH=${LWS_DEBUG_MBEDTLS_PATCH}
             -DLWS_WINDOWS_BUILD=${WIN32}
             -DLWS_SOURCE_DIR=<SOURCE_DIR>
-            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_DEBUG_mbedtls.cmake"
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_windows_xp_source_compatibility.cmake"
+
+        # Patch the v4.3 authority bug (all OS)
+        COMMAND
+        ${CMAKE_COMMAND}
+            -DLWS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_http2_authority.cmake"
+
+	# Patch the v4.3 about the relative redirect URL (all OS)
+        COMMAND
+        ${CMAKE_COMMAND}
+            -DLWS_SOURCE_DIR=<SOURCE_DIR>
+            -P "${ROOT_DIR}/src/external/patches/patch_libwebsockets_relative_redirect.cmake"
+
 
     CMAKE_ARGS
         ${COMMON_CMAKE_ARGS}
