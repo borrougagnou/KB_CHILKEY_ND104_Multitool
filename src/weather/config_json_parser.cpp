@@ -117,6 +117,8 @@ bool load_weather_configuration(const std::string *configuration_path, weather_c
 
     if (provider_name == "open-meteo")
         configuration->provider = weather_provider_open_meteo;
+    else if (provider_name == "meletrix")
+        configuration->provider = weather_provider_meletrix;
     else
     {
         *error_message = "Unsupported Weather.weather_api provider: " + provider_name;

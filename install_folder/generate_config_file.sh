@@ -500,7 +500,8 @@ write_config()
                 "weather_api": $weather_api,
                 "periodic_run": "1h",
                 "other_weather_api_available": [
-                  "open-meteo"
+                  "open-meteo",
+                  "meletrix"
                 ]
               }
             }' > "$temporary_file"; then
@@ -544,7 +545,8 @@ config = {
         "weather_api": os.environ["WEATHER_API"],
         "periodic_run": "30m",
         "other_weather_api_available": [
-          "open-meteo"
+          "open-meteo",
+          "meletrix"
         ]
     },
 }

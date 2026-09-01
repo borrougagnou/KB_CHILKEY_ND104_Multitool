@@ -26,7 +26,8 @@ enum temperature_unit {
 };
 
 enum weather_provider {
-    weather_provider_open_meteo
+    weather_provider_open_meteo,
+    weather_provider_meletrix
 };
 
 struct weather_data {

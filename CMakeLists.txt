@@ -107,6 +107,7 @@ add_executable(weather_update
 	src/weather/ip_geolocation.cpp
 	src/weather/hid_protocol_for_weather.cpp
 	src/weather/weather_sources/open_meteo.cpp
+	src/weather/weather_sources/meletrix.cpp
 )
 
 ## Picture Program

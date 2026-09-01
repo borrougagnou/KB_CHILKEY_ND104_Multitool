@@ -9,6 +9,7 @@
 #include "include/hid_protocol_for_weather.hh"
 
 #include "include/weather_sources/open_meteo.hh"
+#include "include/weather_sources/meletrix.hh"
 
 #include <iostream>
 #include <string>
@@ -88,6 +89,8 @@ bool update_weather(hid_device *handle)
     operation_succeeded = false;
     if (configuration.provider == weather_provider_open_meteo)
         operation_succeeded = get_open_meteo_weather(http, &location, configuration.unit, &weather, &error_message);
+    else if (configuration.provider == weather_provider_meletrix)
+        operation_succeeded = get_meletrix_weather(http, &location, configuration.unit, &weather, &error_message);
     else
         error_message = "Unsupported weather source";
 

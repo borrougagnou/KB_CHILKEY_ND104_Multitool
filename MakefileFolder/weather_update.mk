@@ -48,7 +48,8 @@ CPPFLAGS_WEATHER = \
 
 # COMMON OBJECTS
 WEATHER_SOURCE_OBJ = \
-	$(WEATHER_BUILD)/weather_sources/open_meteo.o
+	$(WEATHER_BUILD)/weather_sources/open_meteo.o \
+	$(WEATHER_BUILD)/weather_sources/meletrix.o
 
 
 WEATHER_OBJ = \
