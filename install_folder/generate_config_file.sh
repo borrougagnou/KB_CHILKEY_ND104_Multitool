@@ -15,6 +15,7 @@ case "$(uname)" in
 esac
 CONFIG_FILE="$CONFIG_DIR/config.json"
 LOCATION_URL="http://ip-api.com/json/?fields=status,message,country,city,lat,lon"
+CERTIFICATE_URL="https://curl.se/ca/cacert.pem"
 
 country=""
 city=""
@@ -102,6 +103,25 @@ download_location()
 
     if command -v wget >/dev/null 2>&1; then
         wget -qO- -T 10 -t 1 "$1"
+        return $?
+    fi
+
+    return 2
+}
+
+download_certificate()
+{
+    local ca_file="$CONFIG_DIR/cacert.pem"
+
+    mkdir -p "$CONFIG_DIR" || return 1
+
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --silent --show-error --connect-timeout 5 --max-time 30 -o "$ca_file" "$CERTIFICATE_URL"
+        return $?
+    fi
+
+    if command -v wget >/dev/null 2>&1; then
+        wget -qO "$ca_file" -T 30 -t 1 "$CERTIFICATE_URL"
         return $?
     fi
 
@@ -615,6 +635,17 @@ main()
     echo
     echo "Config file created or updated:"
     echo "$CONFIG_FILE"
+
+    echo
+    echo
+    if ask_yes_no "Do you want to download the latest HTTPS certificate?"; then
+        if download_certificate; then
+            echo "Certificate downloaded:"
+            echo "$CONFIG_DIR/cacert.pem"
+        else
+            echo "Error: unable to download the certificate." >&2
+        fi
+    fi
 }
 
 
