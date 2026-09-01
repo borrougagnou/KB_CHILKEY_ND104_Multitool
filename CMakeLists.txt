@@ -97,11 +97,17 @@ add_executable(clock_update
 )
 
 
-## Weather Program
-#add_executable(weather_update
-#	src/weather/main_weather.cpp
-#	src/weather/weather_update.cpp
-#)
+# Weather Program
+add_executable(weather_update
+	src/weather/main_weather.cpp
+	src/weather/weather_orchestrator.cpp
+	src/weather/config_file_path_discovery.cpp
+	src/weather/config_json_parser.cpp
+	src/weather/http_request.cpp
+	src/weather/ip_geolocation.cpp
+	src/weather/hid_protocol_for_weather.cpp
+	src/weather/weather_sources/open_meteo.cpp
+)
 
 ## Picture Program
 #add_executable(picture_upload
@@ -120,20 +126,20 @@ add_executable(lws_lib_test src/unit_test/test_libwebsockets_lib.cpp)
 # Programs who need HIDAPI
 set(HID_PROGRAMS
 	clock_update
-	#weather_update
+	weather_update
 	#picture_upload
 )
 
 # Programs who need JSON Lib
 set(JSON_PROGRAMS
 	json_lib_test
-	#weather_update
+	weather_update
 )
 
 # Programs who need LibWebSockets
 set(LWS_PROGRAMS
 	lws_lib_test
-	#weather_update
+	weather_update
 )
 
 ### Lib config ----------------
