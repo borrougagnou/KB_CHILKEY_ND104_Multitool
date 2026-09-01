@@ -1,5 +1,5 @@
-prefix=/home/runner/work/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Linux
-exec_prefix=/home/runner/work/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Linux
+prefix=/home/runner/work/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Linux
+exec_prefix=/home/runner/work/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Linux
 libdir=${exec_prefix}/lib
 sharedlibdir=${exec_prefix}/lib
 includedir=${exec_prefix}/include

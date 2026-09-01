@@ -160,15 +160,6 @@ enum lws_callback_reasons {
 	 * the default callback action of returning 0 allows the client
 	 * certificates. */
 
-	LWS_CALLBACK_OPENSSL_CONTEXT_REQUIRES_PRIVATE_KEY	= 37,
-	/**< if configured for including OpenSSL support but no private key
-	 * file has been specified (ssl_private_key_filepath is NULL), this is
-	 * called to allow the user to set the private key directly via
-	 * libopenssl and perform further operations if required; this might be
-	 * useful in situations where the private key is not directly accessible
-	 * by the OS, for example if it is stored on a smartcard.
-	 * user is the server's OpenSSL SSL_CTX* */
-
 	LWS_CALLBACK_SSL_INFO					= 67,
 	/**< SSL connections only.  An event you registered an
 	 * interest in at the vhost has occurred on a connection
@@ -826,6 +817,15 @@ enum lws_callback_reasons {
 	 * destroyed.  in is the child wsi.
 	 */
 
+	LWS_CALLBACK_CONNECTING					= 105,
+	/**< Called before a socketfd is about to connect().  In is the
+	 * socketfd, cast to a (void *), if on a platform where the socketfd
+	 * is an int, recover portably using (lws_sockfd_type)(intptr_t)in.
+	 *
+	 * It's also called in SOCKS5 or http_proxy cases where the socketfd is
+	 * going to try to connect to its proxy.
+	 */
+
 	/* ---------------------------------------------------------------------
 	 * ----- Callbacks related to TLS certificate management -----
 	 */
@@ -869,8 +869,18 @@ enum lws_callback_reasons {
 	 * close the wsi.
 	 */
 	LWS_CALLBACK_MQTT_RESEND				= 210,
-	/**< In QoS1, this callback is generated instead of the _ACK one if
-	 * we timed out waiting for a PUBACK and we must resend the message.
+	/**< In QoS1 or QoS2, this callback is generated instead of the _ACK one
+	 * if we timed out waiting for a PUBACK or a PUBREC, and we must resend
+	 * the message.  Return nonzero to close the wsi.
+	 */
+	LWS_CALLBACK_MQTT_UNSUBSCRIBE_TIMEOUT			= 211,
+	/**< When a UNSUBSCRIBE is sent, this callback is generated instead of
+	 * the _UNSUBSCRIBED one if we timed out waiting for a UNSUBACK.
+	 * Return nonzero to close the wsi.
+	 */
+	LWS_CALLBACK_MQTT_SHADOW_TIMEOUT			= 212,
+	/**< When a Device Shadow is sent, this callback is generated if we
+	 * timed out waiting for a response from AWS IoT.
 	 * Return nonzero to close the wsi.
 	 */
 

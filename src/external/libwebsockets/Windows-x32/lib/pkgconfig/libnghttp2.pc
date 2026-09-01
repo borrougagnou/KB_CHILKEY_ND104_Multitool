@@ -20,10 +20,10 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-prefix=D:/a/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Windows-x32
-exec_prefix=D:/a/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Windows-x32
-libdir=D:/a/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Windows-x32/lib
-includedir=D:/a/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Windows-x32/include
+prefix=D:/a/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Windows-x32
+exec_prefix=D:/a/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Windows-x32
+libdir=D:/a/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Windows-x32/lib
+includedir=D:/a/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Windows-x32/include
 
 Name: libnghttp2
 Description: HTTP/2 C library

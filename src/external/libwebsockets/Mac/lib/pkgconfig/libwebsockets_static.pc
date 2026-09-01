@@ -1,12 +1,12 @@
-prefix="/Users/runner/work/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Mac"
+prefix="/Users/runner/work/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Mac"
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
 Name: libwebsockets_static
 Description: Websockets server and client static library
-Version: 4.1.6-v4.1.6
+Version: 4.3.10-v4.3.10
 
-Libs: -L${libdir} -lwebsockets_static
+Libs: -L${libdir} -l:libwebsockets.a
 Libs.private:
 Cflags: -I${includedir}

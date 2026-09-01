@@ -1,5 +1,5 @@
-prefix=/Users/runner/work/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Mac
-exec_prefix=/Users/runner/work/KB_CHILKEY_ND104_Multitool/KB_CHILKEY_ND104_Multitool/src/external/libwebsockets/Mac
+prefix=/Users/runner/work/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Mac
+exec_prefix=/Users/runner/work/LibWebSockets_for_old_windows/LibWebSockets_for_old_windows/src/external/libwebsockets/Mac
 libdir=${exec_prefix}/lib
 sharedlibdir=${exec_prefix}/lib
 includedir=${exec_prefix}/include
