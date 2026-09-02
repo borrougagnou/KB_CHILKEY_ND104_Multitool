@@ -1,13 +1,11 @@
 # ⌨️ Chilkey ND104 Keyboard Tools
 
-### ⚠️  WIP README
-
 Tools designed to extend and automate your Chilkey ND104 keyboard experience.
 
 Here's a list of plugin:
 
 - ✅ : Clock (tested and working on Linux)
-- ⏳ : Weather (HID communication done, now need to implement website request )
+- ⏳ : Weather (2 API at the moment) - cron and task scheduler soon
 - ❌ : ...
 - ❌ : ...
 
@@ -23,15 +21,14 @@ Here's a list of plugin:
 
 ## ⚠️ Before you start
 
-- 📖 Read carefuly the **[How to use](#-how-to-use)** section.
 - 📜 Licensed under **GPL-3.0** (please respect it)
 - 🔌 Requires a **USB-connected ND104 keyboard**
 
 ---
 
-## 🐧 Linux setup (required)
+## Install or Update:
 
-Linux users must run this first.
+## 🐧 Linux setup
 
 ⚠️ **sudo/root permission** are requested only for the Driver and the Weather part.
 
@@ -45,6 +42,16 @@ Choose ONE method:
 
 - 🔗 Enables communication between your Chilkey ND104 keyboard and your system
 - 📦 Installs `libusb-1.0-0-dev` (required dependency)
+- 🛠️ Create a JSON config file on your home directory
+- 📩 Download HTTPS Certificate
+
+## 🍎 Mac setup (not tested)
+
+- Read the Linux setup
+
+## 🪟 Windows setup (not fully implemented)
+
+- Not implemented yet
 
 ---
 
@@ -62,66 +69,19 @@ Choose ONE method:
 - Connect the Keyboard in wired mode
 - Connect internet.
 - Execute the `weather_update` program (no need admin/root right)
-- The program will check if there's parameter or if a config file exis
-    - if yes read the value, synchronize it with the keyboard
-    - if no, throw an error about missing parameter/file
+- The program will search the config file with parameters
 
-> [!IMPORTANT]
+> [!TIPS]
 >
-> The parameter value are **above** the file value !
+> You can change the `weather_api` on the config file by one of the other available api (`other_weather_api_available`)
+
+
 
 
 ---
 
-## ⚙️ Build
-Here's the part for the developper or user who want to install it by themselves:<br />
-Install LibUSB on Linux + GCC + Install Make and CMake
+## ⚙️ Build and contribution:
 
 
-### <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/tux.svg" width="24" height="24"> On Linux
-> [!IMPORTANT]
-> Please execute the `install_keyboard_driver.sh` first !
-> The script will allow communication between your device and your system + will install `libusb-1.0-0-dev` because it is needed for the build OR the execution of the program.
+Read the [CONTRIBUTE.md](CONTRIBUTE.md)
 
-To build the program - 2 choices:
-- With Make: execute the command `make` into the root folder with the Makefile
-
-- With CMake:
-```
-cmake -S . -B cmake-build
-cmake --build cmake-build
-```
-
-
-### ![apple_logo](https://www.readmecodegen.com/api/social-icon?name=apple&size=24) On Mac
-Build the program with `make` or `cmake`
-- With Make: execute the command `make` into the folder with the Makefile
-
-- With CMake:
-```
-cmake -S . -B cmake-build
-cmake --build cmake-build
-```
-
-
-### ![windows_logo](https://www.readmecodegen.com/api/social-icon?name=windows&size=24) On Windows
-Build the program with `make` or `cmake`
-- With Make: execute the command `make` into the folder with the Makefile
-
-- With CMake:
-```
-cmake -S . -B cmake-build
-cmake --build cmake-build
-```
-
-
-## 🧪 Test:
-
-Tested on Linux: ✅<br />
-Tested on MacOS: 🔀 yes but not tested on a real machine<br />
-Tested on Windows: 🔀 yes but not tested on a real machine<br />
-
-
-## ℹ️ Source
-
-The `/src/external` folder contain external source of every project used on the program
