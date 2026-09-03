@@ -1,0 +1,681 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      version:
+        description: "Version / tag (eg: v1.2.0 or v1.2.0-beta.1)"
+        required: true
+        type: string
+
+      release_type:
+        description: "Release type"
+        required: true
+        default: "release"
+        type: choice
+        options:
+          - release
+          - prerelease
+
+      draft:
+        description: "Create as draft"
+        required: true
+        default: false
+        type: boolean
+
+      generate_notes:
+        description: "Generate release notes automatically"
+        required: true
+        default: false
+        type: boolean
+
+      release_notes:
+        description: "(OPTIONAL) Release notes (Markdown supported, use \\n and \\t for new line or tab)"
+        required: false
+        type: string
+
+env:
+  PROGRAMS: "clock_update weather_update"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+
+jobs:
+
+##########################################################################
+############################ LINUX MY BELOVED ############################
+##########################################################################
+
+  build-linux:
+    name: Build Linux
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os:           ubuntu-22.04
+            target:       linux
+            platform_dir: Linux
+            make_cmd:     make
+            artifact:     external-linux
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install deps
+      - name: Install libusb (Linux)
+        run: sudo apt-get update && sudo apt-get install -y libusb-1.0-0-dev
+
+      # Build
+      - name: Build
+        run: |
+          for program in $PROGRAMS; do
+            echo "Building $program..."
+            make $program
+          done
+
+      # Execute (|| true to prevent the program fail if no HID device is connected)
+      - name: Run executable
+        run: |
+          for bin in $PROGRAMS; do
+            echo "Running $bin"
+            ./$bin || true
+          done
+
+      - name: Prepare release file
+        run: |
+          mkdir -p release
+          for bin in $PROGRAMS; do
+            echo "Copy $bin into release folder"
+            cp $bin release/$bin-linux-x64
+          done
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            release/clock_update-linux-x64
+            release/weather_update-linux-x64
+
+
+
+
+
+##########################################################################
+############################ MAC MY TOLERATED ############################
+##########################################################################
+
+  build-macos:
+    name: Build macOS
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os:           macos-14
+            target:       macos
+            platform_dir: Mac
+            make_cmd:     gmake
+            artifact:     external-macos
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Build
+      - name: Build
+        run: |
+          for program in $PROGRAMS; do
+            echo "Building $program..."
+            make $program
+          done
+
+      # Execute (|| true to prevent the program fail if no HID device is connected)
+      - name: Run executable
+        run: |
+          for bin in $PROGRAMS; do
+            echo "Running $bin"
+            ./$bin || true
+          done
+
+      - name: Prepare release file
+        run: |
+          mkdir -p release
+          for bin in $PROGRAMS; do
+            echo "Copy $bin into release folder"
+            cp $bin release/$bin-mac
+          done
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            release/clock_update-mac
+            release/weather_update-mac
+
+
+
+
+
+##########################################################################
+########################### WINDOWS MY TORMENT ###########################
+##########################################################################
+
+  build-windows-x86:
+    name: Build Windows XP 32-bit
+    strategy:
+      matrix:
+        include:
+          - os:      windows-2022
+            msystem: MINGW32
+            prefix:  mingw32
+            pkgarch: i686
+            name:    windows-x32-xp
+            arch:    x32
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MinGW
+        id: setup_mingw
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git
+            tree
+            make
+            mingw-w64-${{ matrix.msystem == 'mingw32' && 'i686' || 'x86_64' }}-gcc
+            mingw-w64-${{ matrix.msystem == 'mingw32' && 'i686' || 'x86_64' }}-cmake
+
+      - name: Add MinGW to Windows PATH
+        shell: pwsh
+        run: |
+          $mingwBin = "${{ steps.setup_mingw.outputs.msys2-location }}\${{ matrix.msystem }}\bin"
+
+          Write-Host "MinGW bin: $mingwBin"
+
+          if (-not (Test-Path $mingwBin)) {
+            Write-Error "MinGW directory doesn't exist: $mingwBin"
+            exit 1
+          }
+
+          $mingwBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify MinGW
+        shell: pwsh
+        run: |
+          Write-Host "=== CMake ==="
+          Get-Command cmake
+          cmake --version
+
+          Write-Host "=== GCC ==="
+          Get-Command gcc
+          gcc --version
+
+          Write-Host "Compiler target:"
+          gcc -dumpmachine
+
+          Write-Host "=== G++ ==="
+          Get-Command g++
+          g++ --version
+
+      # Build
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -S . -B cmake-build `
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DARCH=${{ matrix.arch }}
+
+      - name: Verify CMake Configuration
+        shell: pwsh
+        run: |
+          Write-Host "=== CMake generator/compiler ==="
+
+          Select-String `
+            -Path "cmake-build\CMakeCache.txt" `
+            -Pattern "CMAKE_GENERATOR:|CMAKE_C_COMPILER:|CMAKE_CXX_COMPILER:"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          foreach ($program in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            Write-Host "Building $program..."
+            cmake --build cmake-build --config Release --target $program
+
+            $exe = "cmake-build\${program}.exe"
+            if (-not (Test-Path $exe -PathType Leaf)) {
+              Write-Error "Executable not found: $exe"
+              Write-Host "Contents of cmake-build:"
+              Get-ChildItem -Recurse cmake-build
+              exit 1
+            }
+
+            Write-Host "Successfully built: $exe"
+          }
+
+      - name: Run executable
+        run: |
+          $success = $true
+          foreach ($exe in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            if (Test-Path ".\cmake-build\${exe}.exe") {
+              Write-Host "Running ${exe}"
+              & ".\cmake-build\${exe}.exe"
+            }
+            else {
+              Write-Host "Executable not found: ${exe}"
+              $success = $false
+            }
+          }
+          if ($success) {
+            exit 0
+          }
+          Write-Host "One or more required executables were not found."
+          Write-Host "Contents of cmake-build:"
+          Get-ChildItem -Recurse .\cmake-build
+          exit 1
+
+      - name: Prepare release file
+        shell: pwsh
+        run: |
+          $success = $true
+          New-Item ".\release" -ItemType Directory
+          foreach ($exe in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            if (Test-Path ".\cmake-build\${exe}.exe") {
+              Write-Host "Copy ${exe} into release folder"
+              Copy-Item -Path ".\cmake-build\${exe}.exe" -Destination ".\release\${exe}-win32.exe"
+            }
+            else {
+              Write-Host "Executable not found: ${exe}"
+              $success = $false
+            }
+          }
+          if ($success) {
+            exit 0
+          }
+          Write-Host "One or more required executables were not found."
+          Write-Host "Contents of cmake-build:"
+          Get-ChildItem -Recurse .\cmake-build
+          exit 1
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86
+          path: |
+            release/clock_update-win32.exe
+            release/weather_update-win32.exe
+
+
+
+
+
+
+
+
+##########################################################################
+#################### WINDOWS MY TORMENT BUT IN 64 BIT ####################
+##########################################################################
+
+  build-windows-x64:
+    name: Build Windows XP 64-bit
+    strategy:
+      matrix:
+        include:
+          - os:      windows-2022
+            msystem: MINGW64
+            prefix:  mingw64
+            pkgarch: x86_64
+            name:    windows-x64
+            arch:    x64
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MinGW
+        id: setup_mingw
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git
+            tree
+            make
+            mingw-w64-${{ matrix.msystem == 'mingw32' && 'i686' || 'x86_64' }}-gcc
+            mingw-w64-${{ matrix.msystem == 'mingw32' && 'i686' || 'x86_64' }}-cmake
+
+      - name: Add MinGW to Windows PATH
+        shell: pwsh
+        run: |
+          $mingwBin = "${{ steps.setup_mingw.outputs.msys2-location }}\${{ matrix.msystem }}\bin"
+
+          Write-Host "MinGW bin: $mingwBin"
+
+          if (-not (Test-Path $mingwBin)) {
+            Write-Error "MinGW directory doesn't exist: $mingwBin"
+            exit 1
+          }
+
+          $mingwBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify MinGW
+        shell: pwsh
+        run: |
+          Write-Host "=== CMake ==="
+          Get-Command cmake
+          cmake --version
+
+          Write-Host "=== GCC ==="
+          Get-Command gcc
+          gcc --version
+
+          Write-Host "Compiler target:"
+          gcc -dumpmachine
+
+          Write-Host "=== G++ ==="
+          Get-Command g++
+          g++ --version
+
+      # Build
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -S . -B cmake-build `
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DARCH=${{ matrix.arch }}
+
+      - name: Verify CMake Configuration
+        shell: pwsh
+        run: |
+          Write-Host "=== CMake generator/compiler ==="
+
+          Select-String `
+            -Path "cmake-build\CMakeCache.txt" `
+            -Pattern "CMAKE_GENERATOR:|CMAKE_C_COMPILER:|CMAKE_CXX_COMPILER:"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          foreach ($program in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            Write-Host "Building $program..."
+            cmake --build cmake-build --config Release --target $program
+
+            $exe = "cmake-build\${program}.exe"
+            if (-not (Test-Path $exe -PathType Leaf)) {
+              Write-Error "Executable not found: $exe"
+              Write-Host "Contents of cmake-build:"
+              Get-ChildItem -Recurse cmake-build
+              exit 1
+            }
+
+            Write-Host "Successfully built: $exe"
+          }
+
+      - name: Run executable
+        run: |
+          $success = $true
+          foreach ($exe in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            if (Test-Path ".\cmake-build\${exe}.exe") {
+              Write-Host "Running ${exe}"
+              & ".\cmake-build\${exe}.exe"
+            }
+            else {
+              Write-Host "Executable not found: ${exe}"
+              $success = $false
+            }
+          }
+          if ($success) {
+            exit 0
+          }
+          Write-Host "One or more required executables were not found."
+          Write-Host "Contents of cmake-build:"
+          Get-ChildItem -Recurse .\cmake-build
+          exit 1
+
+      - name: Prepare release file
+        shell: pwsh
+        run: |
+          $success = $true
+          New-Item ".\release" -ItemType Directory
+          foreach ($exe in $env:PROGRAMS.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            if (Test-Path ".\cmake-build\${exe}.exe") {
+              Write-Host "Copy ${exe} into release folder"
+              Copy-Item -Path ".\cmake-build\${exe}.exe" -Destination ".\release\${exe}-win64.exe"
+            }
+            else {
+              Write-Host "Executable not found: ${exe}"
+              $success = $false
+            }
+          }
+          if ($success) {
+            exit 0
+          }
+          Write-Host "One or more required executables were not found."
+          Write-Host "Contents of cmake-build:"
+          Get-ChildItem -Recurse .\cmake-build
+          exit 1
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            release/clock_update-win64.exe
+            release/weather_update-win64.exe
+
+
+
+
+
+
+
+
+##########################################################################
+############################## RELEASE PART ##############################
+##########################################################################
+
+  release:
+    name: Create GitHub Release
+
+    needs:
+      - build-linux
+      - build-macos
+      - build-windows-x86
+      - build-windows-x64
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Linux binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: release
+
+      - name: Download macOS binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos
+          path: release
+
+      - name: Download Windows x86 binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x86
+          path: release
+
+      - name: Download Windows x64 binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: release
+
+      - name: Show release files
+        shell: bash
+        run: |
+          ls -lah release
+
+
+      ## RELEASE PREPARATION
+
+      - name: Prepare manual release notes
+        if: github.event_name == 'workflow_dispatch' && inputs.release_notes != ''
+        shell: bash
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          RELEASE_NOTES="${RELEASE_NOTES//\\n/$'\n'}"
+          RELEASE_NOTES="${RELEASE_NOTES//\\t/$'\t'}"
+
+          printf '%s\n' "$RELEASE_NOTES" > release-notes.md
+
+          echo "Manual release notes:"
+          cat release-notes.md
+
+      - name: Prepare release information
+        id: release_info
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+
+              VERSION="${{ inputs.version }}"
+              RELEASE_TYPE="${{ inputs.release_type }}"
+              DRAFT="${{ inputs.draft }}"
+              GENERATE_NOTES="${{ inputs.generate_notes }}"
+
+          else
+
+              VERSION="${{ github.ref_name }}"
+              DRAFT="false"
+              GENERATE_NOTES="true"
+
+              if [[ "$VERSION" == *-alpha* ]]; then
+                  RELEASE_TYPE="prerelease"
+              else
+                  RELEASE_TYPE="release"
+              fi
+
+              if [[ "$VERSION" == *-beta* ]]; then
+                  RELEASE_TYPE="prerelease"
+              else
+                  RELEASE_TYPE="release"
+              fi
+
+          fi
+
+          echo "version=$VERSION"               >> "$GITHUB_OUTPUT"
+          echo "release_type=$RELEASE_TYPE"     >> "$GITHUB_OUTPUT"
+          echo "draft=$DRAFT"                   >> "$GITHUB_OUTPUT"
+          echo "generate_notes=$GENERATE_NOTES" >> "$GITHUB_OUTPUT"
+
+          echo "Version:        $VERSION"
+          echo "Release type:   $RELEASE_TYPE"
+          echo "Draft:          $DRAFT"
+          echo "Generate notes: $GENERATE_NOTES"
+
+
+      ## PRE-RELEASE
+
+      - name: Create pre-release
+        if: steps.release_info.outputs.release_type == 'prerelease'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.release_info.outputs.version }}"
+
+          TARGET_ARGUMENT=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              TARGET_ARGUMENT="--target ${{ github.sha }}"
+          else
+              TARGET_ARGUMENT="--verify-tag"
+          fi
+
+          NOTES_ARGUMENT=""
+          if [ "${{ steps.release_info.outputs.generate_notes }}" = "true" ]; then
+              NOTES_ARGUMENT="--generate-notes"
+          fi
+
+          MANUAL_NOTES_ARGUMENT=""
+          if [ -f "release-notes.md" ]; then
+              MANUAL_NOTES_ARGUMENT="--notes-file release-notes.md"
+          fi
+
+          DRAFT_ARGUMENT=""
+          if [ "${{ steps.release_info.outputs.draft }}" = "true" ]; then
+              DRAFT_ARGUMENT="--draft"
+          fi
+
+          gh release create "$VERSION" \
+              release/* \
+              --title "$VERSION" \
+              --prerelease \
+              --latest=false \
+              $TARGET_ARGUMENT \
+              $NOTES_ARGUMENT \
+              $MANUAL_NOTES_ARGUMENT \
+              $DRAFT_ARGUMENT
+
+
+      ## RELEASE
+
+      - name: Create release
+        if: steps.release_info.outputs.release_type == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.release_info.outputs.version }}"
+
+          TARGET_ARGUMENT=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              TARGET_ARGUMENT="--target ${{ github.sha }}"
+          else
+              TARGET_ARGUMENT="--verify-tag"
+          fi
+
+          NOTES_ARGUMENT=""
+          if [ "${{ steps.release_info.outputs.generate_notes }}" = "true" ]; then
+              NOTES_ARGUMENT="--generate-notes"
+          fi
+
+          MANUAL_NOTES_ARGUMENT=""
+          if [ -f "release-notes.md" ]; then
+              MANUAL_NOTES_ARGUMENT="--notes-file release-notes.md"
+          fi
+
+          DRAFT_ARGUMENT=""
+          if [ "${{ steps.release_info.outputs.draft }}" = "true" ]; then
+              DRAFT_ARGUMENT="--draft"
+          fi
+
+          gh release create "$VERSION" \
+              release/* \
+              --title "$VERSION" \
+              --latest \
+              $TARGET_ARGUMENT \
+              $NOTES_ARGUMENT \
+              $MANUAL_NOTES_ARGUMENT \
+              $DRAFT_ARGUMENT
+
