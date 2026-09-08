@@ -28,13 +28,22 @@ echo "==> Detected OS: $OS_ID"
 ## PART 1
 echo "==> Allow communication between the keyboard and Linux"
 
-cat << EOF > /etc/udev/rules.d/99-ubest.rules
+
+## https://skia.googlesource.com/external/github.com/libsdl-org/SDL/%2B/refs/heads/main/src/hidapi/udev/69-hid.rules#20
+## MORE INFO AT: https://github.com/systemd/systemd/issues/4288#issuecomment-348166161
+cat << EOF > /etc/udev/rules.d/70-ubest.rules
 # UBEST ND104 Keyboard
 KERNEL=="hidraw*", ATTRS{idVendor}=="6d67", ATTRS{idProduct}=="016c", MODE="0666", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="6d67", ATTRS{idProduct}=="016c", TAG+="uaccess"
 
 # UBEST ND104 Screen
 KERNEL=="hidraw*", ATTRS{idVendor}=="5542", ATTRS{idProduct}=="0001", MODE="0666", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="5542", ATTRS{idProduct}=="0001", TAG+="uaccess"
+
 EOF
+
+## REMOVE PREVIOUS DRIVER IF EXIST:
+rm -rf /etc/udev/rules.d/99-ubest.rules
 
 udevadm control --reload-rules
 udevadm trigger
