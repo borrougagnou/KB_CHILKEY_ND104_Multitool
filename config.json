@@ -18,7 +18,7 @@
     "periodic_run": "1h",
     "other_weather_api_available": [
       "open-meteo",
-      "NONE"
+      "meletrix"
     ]
   }
 }
