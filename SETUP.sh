@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BASE_URL="https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/refs/heads/config_file/install_folder"
+BASE_URL="https://raw.githubusercontent.com/borrougagnou/KB_CHILKEY_ND104_Multitool/refs/heads/master/install_folder"
 
 DRIVER_URL="${BASE_URL}/install_keyboard_driver.sh"
 CONFIG_URL="${BASE_URL}/generate_config_file.sh"
