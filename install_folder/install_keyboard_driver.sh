@@ -66,7 +66,7 @@ case "$OS_ID" in
     pkg="libusb1"
     cmd="dnf install -y"
     ;;
-  arch|manjaro|endeavouros)
+  arch|manjaro|endeavouros|cachyos)
     pkg="libusb"
     cmd="pacman -S --noconfirm"
     ;;
